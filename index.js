@@ -9,163 +9,204 @@ const BOT_USERNAME = "createUnlimitedGmail_Bot";
 const bot = new Telegraf(BOT_TOKEN);
 bot.use(session());
 
-// --- DATABASE (In-Memory) ---
-const db = {}; 
-const getDB = (id) => {
-    if (!db[id]) {
-        db[id] = { points: 10, referrals: 0, registered: 0, status: "Free" };
+// --- ADVANCED DATABASE (In-Memory) ---
+const db = {
+    users: {},
+    stats: { totalGmails: 0 }
+};
+
+const getDB = (id, ctx = null) => {
+    if (!db.users[id]) {
+        db.users[id] = { 
+            points: 10, 
+            referrals: 0, 
+            registered: 0, 
+            lastBonus: null,
+            username: ctx ? ctx.from.username : "User"
+        };
     }
-    return db[id];
+    return db.users[id];
 };
 
 const CHANNELS = ['@Hayre37', '@Digital_Claim', '@BIgsew_community', '@hayrefx'];
 
-// --- KEYBOARDS ---
+// --- PREMIUM KEYBOARDS ---
 const mainMenu = Markup.keyboard([
     ['➕ Register New Gmail'],
     ['⚙️ Account', '🚸 My Referrals'],
-    ['🏥 Help', '🛠 Admin Panel']
+    ['🎁 Daily Bonus', '🏥 Help'],
+    ['🛠 Admin Panel']
 ]).resize();
 
 const adminMenu = Markup.keyboard([
     ['📊 Global Stats', '📢 Broadcast'],
-    ['➕ Add Points', '⬅️ Back to User Menu']
+    ['➕ Add Points', '⬅️ Exit Admin']
 ]).resize();
 
-// --- 🛡️ THE LOCK (STRICT MIDDLEWARE) ---
-async function checkMembership(ctx, next) {
-    if (ctx.from.id === ADMIN_ID) return next();
+const cancelBtn = Markup.keyboard([['❌ Cancel Operation']]).resize();
 
+// --- 🛡️ THE SUPREME GUARD (FORCE JOIN) ---
+async function forceJoin(ctx, next) {
+    if (ctx.from.id === ADMIN_ID) return next();
+    
+    let needsToJoin = [];
     for (const channel of CHANNELS) {
         try {
             const member = await ctx.telegram.getChatMember(channel, ctx.from.id);
-            if (['left', 'kicked', 'restricted'].includes(member.status)) {
-                return ctx.replyWithPhoto(
-                    { url: 'https://i.ibb.co/v6yXyXG/image-b8cbf6.png' },
-                    {
-                        caption: `⛔️ **ACCESS DENIED**\n\nYou must be a subscriber of our channels to use **${BOT_NAME}**.\n\n_If you leave the channels, your access is automatically locked._`,
-                        parse_mode: 'Markdown',
-                        ...Markup.inlineKeyboard([
-                            [Markup.button.url("Join @Hayre37", "https://t.me/Hayre37")],
-                            [Markup.button.url("Join @Digital_Claim", "https://t.me/Digital_Claim")],
-                            [Markup.button.callback("I have joined all ✅", "verify")]
-                        ])
-                    }
-                );
-            }
+            if (['left', 'kicked'].includes(member.status)) needsToJoin.push(channel);
         } catch (e) { continue; }
+    }
+
+    if (needsToJoin.length > 0) {
+        return ctx.replyWithPhoto(
+            { url: 'https://i.ibb.co/v6yXyXG/image-b8cbf6.png' },
+            {
+                caption: `⛔️ **ACCESS LOCKED**\n\nYou must be a member of all our channels to use ${BOT_NAME}.\n\n📌 **Missing:** ${needsToJoin.join(', ')}`,
+                ...Markup.inlineKeyboard([
+                    [Markup.button.url("Join Channel 1", "https://t.me/Hayre37"), Markup.button.url("Join Channel 2", "https://t.me/Digital_Claim")],
+                    [Markup.button.callback("Verify Access ✅", "check_again")]
+                ])
+            }
+        );
     }
     return next();
 }
 
-// --- CORE HANDLERS ---
+// --- CORE FEATURES ---
 
 bot.start(async (ctx) => {
-    const user = getDB(ctx.from.id);
-    
-    // Referral Logic
+    const user = getDB(ctx.from.id, ctx);
     const refId = ctx.payload;
     if (refId && refId != ctx.from.id && !user.referredBy) {
         user.referredBy = refId;
         const referrer = getDB(refId);
         referrer.points += 2;
         referrer.referrals += 1;
-        bot.telegram.sendMessage(refId, `🎁 *Referral Bonus!*\nSomeone joined using your link. +2 Points added!`, { parse_mode: 'Markdown' });
+        bot.telegram.sendMessage(refId, `🎉 **Referral Success!**\nSomeone joined via your link! You earned +2 Points.`, { parse_mode: 'Markdown' });
     }
-
-    ctx.replyWithMarkdown(`🔰 **Welcome to ${BOT_NAME}**\n\nCreate unlimited Gmail accounts for your farm. Use the menu below to start.`, mainMenu);
+    ctx.replyWithMarkdown(`🔰 **Welcome to ${BOT_NAME}**\n\nFastest Gmail registration system.`, mainMenu);
 });
 
-bot.hears('➕ Register New Gmail', checkMembership, (ctx) => {
+// 🎁 DAILY BONUS SYSTEM
+bot.hears('🎁 Daily Bonus', forceJoin, (ctx) => {
     const user = getDB(ctx.from.id);
-    if (user.points < 5) {
-        return ctx.replyWithMarkdown(`⚠️ **Insufficient Points**\n\nYou need **5 Points** to register.\n💰 *Balance:* ${user.points} pts`);
+    const now = new Date().getTime();
+    const cooldown = 24 * 60 * 60 * 1000; // 24 Hours
+
+    if (user.lastBonus && (now - user.lastBonus < cooldown)) {
+        const remaining = cooldown - (now - user.lastBonus);
+        const hours = Math.floor(remaining / (1000 * 60 * 60));
+        return ctx.reply(`❌ **Bonus already claimed!**\nCome back in ${hours} hours.`);
     }
-    ctx.session = { step: 'EMAIL' };
-    ctx.replyWithMarkdown("🟢 **Please Send Email** 📧\n\n⚙️ *Example:* `name@gmail.com`", Markup.keyboard([['❌ Cancel Operation']]).resize());
+
+    user.points += 1;
+    user.lastBonus = now;
+    ctx.replyWithMarkdown(`🎁 **Daily Bonus Claimed!**\nYou received **+1 Point**. Check back tomorrow!`);
 });
 
-bot.hears('⚙️ Account', checkMembership, (ctx) => {
+// ⚙️ ACCOUNT VIEW
+bot.hears('⚙️ Account', forceJoin, (ctx) => {
     const user = getDB(ctx.from.id);
     ctx.replyWithMarkdown(
-        `💎 **${BOT_NAME} ACCOUNT**\n` +
+        `👤 **USER DASHBOARD**\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
-        `👤 **User:** \`${ctx.from.first_name}\`\n` +
-        `🆔 **ID:** \`${ctx.from.id}\`\n` +
-        `💰 **Balance:** \`${user.points} Points\`\n` +
-        `📧 **Created:** \`${user.registered} Gmails\`\n` +
+        `💰 **Balance:** \`${user.points} pts\`\n` +
+        `🚸 **Referrals:** \`${user.referrals}\`\n` +
+        `📧 **Gmails Created:** \`${user.registered}\`\n` +
+        `🆔 **Your ID:** \`${ctx.from.id}\`\n` +
         `━━━━━━━━━━━━━━━━━━`, mainMenu
     );
 });
 
-bot.hears('🚸 My Referrals', checkMembership, (ctx) => {
-    const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
-    ctx.replyWithMarkdown(
-        `🚸 **REFERRAL SYSTEM**\n\nInvite friends to earn points!\n💰 *Reward:* 2 Points per friend.\n\n🔗 **Your Link:** \`${link}\``,
-        Markup.inlineKeyboard([[Markup.button.url("Share Link 🚀", `https://t.me/share/url?url=${link}`)]])
-    );
+// 🛠 ADMIN PANEL LOGIC
+bot.hears('🛠 Admin Panel', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ Forbidden.");
+    ctx.replyWithMarkdown(`🛠 **CONTROL PANEL ACTIVATED**\nWelcome back, Boss.`, adminMenu);
 });
 
-// --- ADMIN PANEL LOGIC ---
+bot.hears('📊 Global Stats', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    const totalUsers = Object.keys(db.users).length;
+    ctx.replyWithMarkdown(`📈 **Global Stats**\n\n👥 Total Users: ${totalUsers}\n📧 Total Gmails: ${db.stats.totalGmails}`);
+});
 
-bot.hears('🛠 Admin Panel', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ Access Denied.");
-    ctx.reply("🛠 **CONTROL PANEL**", adminMenu);
+bot.hears('📢 Broadcast', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    ctx.session = { step: 'B_CAST' };
+    ctx.reply("📣 **Enter message for Broadcast:**", cancelBtn);
 });
 
 bot.hears('➕ Add Points', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.session = { step: 'ADD_POINTS_ID' };
-    ctx.reply("Please send the **User ID** you want to give points to:");
+    ctx.session = { step: 'ADD_ID' };
+    ctx.reply("🆔 **Enter User ID:**", cancelBtn);
 });
 
-// --- GLOBAL TEXT HANDLER (State Machine) ---
-
+// --- TEXT FLOW HANDLER (Advanced State Machine) ---
 bot.on('text', async (ctx, next) => {
-    const state = ctx.session?.step;
-
     if (ctx.message.text === '❌ Cancel Operation') {
         ctx.session = null;
-        return ctx.reply("🚫 Operation Cancelled.", mainMenu);
+        return ctx.reply("🚫 Operation Terminated.", mainMenu);
     }
 
-    // Gmail Steps
-    if (state === 'EMAIL') {
+    const state = ctx.session?.step;
+
+    // Register Gmail Logic
+    if (state === 'REG_EMAIL') {
         ctx.session.email = ctx.message.text;
-        ctx.session.step = 'PASS';
-        return ctx.replyWithMarkdown("🔋 **Please Send Password** 🔑");
+        ctx.session.step = 'REG_PASS';
+        return ctx.reply("🔑 **Send Password:**", cancelBtn);
     }
-    if (state === 'PASS') {
-        const { email } = ctx.session;
+    if (state === 'REG_PASS') {
+        const email = ctx.session.email;
         ctx.session = null;
-        const msg = await ctx.reply("🚀 *Registering...*", { parse_mode: 'Markdown' });
+        const loader = await ctx.reply("🚀 *Registering account...*");
         setTimeout(() => {
-            ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, null, `✅ **Successfully Registered!**\n\n📧 \`${email}\`\n🔑 \`${ctx.message.text}\``, { parse_mode: 'Markdown' });
+            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, `✅ **Gmail Registered!**\n📧 \`${email}\`\n🔑 \`${ctx.message.text}\``, { parse_mode: 'Markdown' });
             getDB(ctx.from.id).points -= 5;
             getDB(ctx.from.id).registered += 1;
-        }, 1500);
+            db.stats.totalGmails += 1;
+        }, 2000);
         return;
     }
 
-    // Admin Steps
-    if (state === 'ADD_POINTS_ID') {
-        ctx.session.targetId = ctx.message.text;
-        ctx.session.step = 'ADD_POINTS_AMOUNT';
-        return ctx.reply("How many points to add?");
-    }
-    if (state === 'ADD_POINTS_AMOUNT') {
-        const target = getDB(ctx.session.targetId);
-        target.points += parseInt(ctx.message.text);
+    // Admin Broadcast
+    if (state === 'B_CAST' && ctx.from.id === ADMIN_ID) {
+        const users = Object.keys(db.users);
+        ctx.reply(`📢 Sending to ${users.length} users...`);
+        users.forEach(id => {
+            bot.telegram.sendMessage(id, `📢 **ANNOUNCEMENT**\n\n${ctx.message.text}`).catch(e => {});
+        });
         ctx.session = null;
-        return ctx.reply(`✅ Added points to user!`, adminMenu);
+        return ctx.reply("✅ Broadcast sent.", adminMenu);
+    }
+
+    // Admin Add Points
+    if (state === 'ADD_ID' && ctx.from.id === ADMIN_ID) {
+        ctx.session.target = ctx.message.text;
+        ctx.session.step = 'ADD_AMT';
+        return ctx.reply("💰 **How many points?**");
+    }
+    if (state === 'ADD_AMT' && ctx.from.id === ADMIN_ID) {
+        const user = getDB(ctx.session.target);
+        user.points += parseInt(ctx.message.text);
+        ctx.reply(`✅ Added! New balance for ${ctx.session.target}: ${user.points}`);
+        ctx.session = null;
+        return;
     }
 
     return next();
 });
 
-bot.action('verify', checkMembership, (ctx) => {
+bot.hears('➕ Register New Gmail', forceJoin, (ctx) => {
+    if (getDB(ctx.from.id).points < 5) return ctx.reply("❌ You need 5 points!");
+    ctx.session = { step: 'REG_EMAIL' };
+    ctx.reply("🟢 **Send Gmail Email:**", cancelBtn);
+});
+
+bot.action('check_again', forceJoin, (ctx) => {
     ctx.answerCbQuery("✅ Verified!");
     ctx.reply("🔰 Welcome To Main Menu", mainMenu);
 });
 
-bot.launch().then(() => console.log(`${BOT_NAME} is Online 🚀`));
+bot.launch().then(() => console.log("System Fully Operational 🚀"));
