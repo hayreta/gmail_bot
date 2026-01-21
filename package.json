@@ -1,9 +1,14 @@
 {
+  "name": "gmail-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
-    "dotenv": "^17.2.3",
-    "lowdb": "^5.1.0",
-    "type": "module",
-    "telegraf": "^4.16.3"
-    
+    "telegraf": "^4.16.3",
+    "mongoose": "^8.0.0",
+    "dotenv": "^16.4.1"
   }
 }
