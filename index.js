@@ -149,29 +149,27 @@ bot.hears('➖ Remove Points', (ctx) => {
 });
 
 // --- BUTTON: LIST ALL USERS ---
+
+bot.hears('🛠 Admin Panel', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ This area is restricted to Developers.");
+    ctx.reply("🛠 **Advanced Admin Dashboard**\nSelect a management tool:", adminKeyboard);
+});
+
+// PASTE THE LIST USERS CODE HERE
 bot.hears('👥 List All Users', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     
     const userIds = Object.keys(db);
-    if (userIds.length === 0) return ctx.reply("📭 No users found in database.");
+    if (userIds.length === 0) return ctx.reply("📭 Database is empty.");
 
-    let report = "📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**\n━━━━━━━━━━━━━━━\n";
-    
-    userIds.forEach((id, index) => {
-        const u = db[id];
-        report += `${index + 1}. 🆔 \`${id}\` | 💰 \`${u.points}pt\` | 📧 \`${u.registered}\`\n`;
+    const buttons = userIds.map(id => {
+        return [Markup.button.callback(`👤 ID: ${id} (${db[id].points} pts)`, `view_prof:${id}`)];
     });
 
-    report += "━━━━━━━━━━━━━━━\nTotal Users: " + userIds.length;
-    
-    ctx.replyWithMarkdown(report, adminKeyboard);
-});
-
-// --- BUTTON: VIEW INDIVIDUAL PROFILE ---
-bot.hears('👤 View Profile', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    ctx.session = { step: 'ADMIN_VIEW_USER' };
-    ctx.replyWithMarkdown("🔍 **Enter the User ID to see full details:**", cancelKeyboard);
+    ctx.replyWithMarkdown(
+        "📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**\n\nClick a user below to view their full profile:",
+        Markup.inlineKeyboard(buttons)
+    );
 });
 
 bot.hears('⬅️ Back to User Menu', (ctx) => ctx.reply("Returning...", mainMenu));
@@ -272,27 +270,36 @@ bot.on('text', async (ctx, next) => {
     } 
     
    // Logic for individual profile lookup
-    if (state === 'ADMIN_VIEW_USER' && ctx.from.id === ADMIN_ID) {
-        const targetId = ctx.message.text;
-        const u = db[targetId];
+   // --- CALLBACK HANDLERS (Put these at the bottom) ---
 
-        if (!u) return ctx.reply("❌ User ID not found.", adminKeyboard);
+bot.action(/view_prof:(.+)/, async (ctx) => {
+    const targetId = ctx.match[1];
+    const u = getDB(targetId); // Get user from DB
 
-        ctx.session = null;
-        return ctx.replyWithMarkdown(
-            `👤 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 PROFILE DATA**\n` +
-            `━━━━━━━━━━━━━━━━━━\n` +
-            `🆔 **User ID:** \`${targetId}\`\n` +
-            `💰 **Balance:** \`${u.points} Points\`\n` +
-            `🚸 **Invites:** \`${u.referrals} Users\`\n` +
-            `📊 **Farmed:** \`${u.registered} Gmails\`\n` +
-            `📅 **Joined:** \`${u.joined.toLocaleDateString()}\`\n` +
-            `🔗 **Referrer:** \`${u.referredBy || 'None'}\`\n` +
-            `━━━━━━━━━━━━━━━━━━`,
-            adminKeyboard
-        );
-    }
-    
+    const profileText = 
+        `👤 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 PROFILE: ${targetId}**\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `💰 **Balance:** \`${u.points} Points\`\n` +
+        `🚸 **Invites:** \`${u.referrals} Users\`\n` +
+        `📊 **Farmed:** \`${u.registered} Gmails\`\n` +
+        `━━━━━━━━━━━━━━━━━━`;
+
+    await ctx.editMessageText(profileText, {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([[Markup.button.callback("⬅️ Back to List", "list_users_back")]])
+    });
+    await ctx.answerCbQuery();
+});
+
+// Logic to go back to the list
+bot.action('list_users_back', (ctx) => {
+    const userIds = Object.keys(db);
+    const buttons = userIds.map(id => [Markup.button.callback(`👤 ID: ${id} (${db[id].points} pts)`, `view_prof:${id}`)]);
+    ctx.editMessageText("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard(buttons)
+    });
+});
     // Gmail Registration Logic
     if (state === 'EMAIL') {
         if (!ctx.message.text.endsWith('@gmail.com')) return ctx.reply("❌ Send a valid @gmail.com address.");
@@ -359,6 +366,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
