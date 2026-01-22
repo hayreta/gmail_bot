@@ -332,114 +332,24 @@ bot.action(/quick_rem:(.+)/, (ctx) => {
     ctx.reply(`💰 **Enter points to remove for ID ${targetId}:**`, cancelKeyboard);
     ctx.answerCbQuery();
 });
-   // --- GMAIL REGISTRATION: STEP 1 (Advanced EMAIL) ---
-if (state === 'EMAIL') {
-    const input = ctx.message.text ? ctx.message.text.trim().toLowerCase() : "";
-    
-    if (!input.endsWith('@gmail.com') || input.length < 11) {
-        return ctx.replyWithMarkdown(
-            "⚠️ **𝐈𝐍𝐕𝐀𝐋𝐈𝐃 𝐅𝐎𝐑𝐌𝐀𝐓**\n\n" +
-            "Please enter a valid `@gmail.com` address to proceed.",
-            cancelKeyboard
-        );
+// User: Email Registration Logic
+    if (state === 'EMAIL') {
+        if (!ctx.message.text.endsWith('@gmail.com')) return ctx.reply("❌ Send a valid @gmail.com.");
+        ctx.session.email = ctx.message.text;
+        ctx.session.step = 'PASS';
+        return ctx.reply("🔑 **Please send the Password**");
     }
 
-    ctx.session.email = input;
-    ctx.session.step = 'PASS';
-
-    return ctx.replyWithMarkdown(
-        "✨ **𝐄𝐌𝐀𝐈𝐋 𝐒𝐀𝐕𝐄𝐃**\n" +
-        "━━━━━━━━━━━━━━━━━━\n" +
-        "📧 **Target:** `" + input + "`\n" +
-        "━━━━━━━━━━━━━━━━━━\n" +
-        "🔑 **𝐍𝐄𝐗𝐓 𝐒𝐓𝐄𝐏:**\n" +
-        "Please send the **Password** for this account.",
-        cancelKeyboard
-    );
-}
-
-// --- GMAIL REGISTRATION: STEP 2 (Fixed 10s PASS) ---
-if (state === 'PASS') {
-    // 1. DATA LOCKING: Store session data in local variables immediately 
-    // This prevents crashes if the session is cleared during the 10s wait.
-    const email = ctx.session ? ctx.session.email : null;
-    const pass = ctx.message.text;
-    const user = getDB(ctx); 
-    const chatId = ctx.chat.id;
-
-    // 2. SESSION RESET: Clear state early so user can't "spam" the process
-    ctx.session = null;
-
-    if (!email || !pass || !user) {
-        return ctx.reply("❌ **𝐒𝐄𝐒𝐒𝐈𝐎𝐍 𝐄𝐑𝐑𝐎𝐑:** Please start again.", mainMenu);
+    if (state === 'PASS') {
+        const user = getDB(ctx.from.id);
+        user.points -= 5;
+        user.registered += 1;
+        ctx.session = null;
+        return ctx.replyWithMarkdown(`✅ **Success!**\n\n📧 *Email:* \`${ctx.session?.email}\`\n\nBalance: ${user.points}`, mainMenu);
     }
 
-    // 3. INITIAL MESSAGE
-    const loader = await ctx.replyWithMarkdown(
-        "🛰 **Establishing Secure Connection...**\n" +
-        "`[░░░░░░░░░░] 0%`", 
-        { disable_web_page_preview: true }
-    );
-
-    // 4. PROTECTED TIMERS (Using async/await inside to handle errors)
-    
-    // 2.5s - Syncing
-    setTimeout(async () => {
-        try {
-            await ctx.telegram.editMessageText(chatId, loader.message_id, null, 
-                "📡 **𝐒𝐲𝐧𝐜𝐢𝐧𝐠 𝐰𝐢𝐭𝐡 𝐅𝐚𝐫𝐦 𝐃𝐚𝐭𝐚𝐛𝐚𝐬𝐞...**\n" +
-                "`[▓▓▓░░░░░░░] 30%`", { parse_mode: 'Markdown' });
-        } catch (e) { console.log("Timer 1 update skipped"); }
-    }, 2500);
-
-    // 5.0s - Encryption
-    setTimeout(async () => {
-        try {
-            await ctx.telegram.editMessageText(chatId, loader.message_id, null, 
-                "🔐 **𝐄𝐧𝐜𝐫𝐲𝐩𝐭𝐢𝐧𝐠 𝐇-𝐇𝐮𝐧𝐭𝐞𝐫 𝐂𝐫𝐞𝐝𝐞𝐧𝐭𝐢𝐚𝐥𝐬...**\n" +
-                "`[▓▓▓▓▓▓░░░░] 65%`", { parse_mode: 'Markdown' });
-        } catch (e) { console.log("Timer 2 update skipped"); }
-    }, 5000);
-
-    // 7.5s - Finalizing
-    setTimeout(async () => {
-        try {
-            await ctx.telegram.editMessageText(chatId, loader.message_id, null, 
-                "🚀 **𝐕𝐞𝐫𝐢𝐟𝐲𝐢𝐧𝐠 𝐀𝐜𝐜𝐨𝐮𝐧𝐭 𝐈𝐧𝐭𝐞𝐠𝐫𝐢𝐭𝐲...**\n" +
-                "`[▓▓▓▓▓▓▓▓▓░] 90%`", { parse_mode: 'Markdown' });
-        } catch (e) { console.log("Timer 3 update skipped"); }
-    }, 7500);
-
-    // 10s - BIG REVEAL
-    setTimeout(async () => {
-        try {
-            const userDisplay = `${user.name} [${user.username}]`;
-            
-            await ctx.telegram.editMessageText(chatId, loader.message_id, null, 
-                `✨ **𝐆𝐌𝐀𝐈𝐋 𝐒𝐔𝐂𝐂𝐄𝐒𝐒𝐅𝐔𝐋𝐋𝐘 𝐅𝐀𝐑𝐌𝐄𝐃** ✨\n` +
-                `━━━━━━━━━━━━━━━━━━\n` +
-                `👤 **User:** ${userDisplay}\n` +
-                `📧 **Email:** \`${email}\`\n` +
-                `🔑 **Pass:** \`${pass}\`\n` +
-                `━━━━━━━━━━━━━━━━━━\n` +
-                `💰 **Cost:** \`5 Points\`\n` +
-                `📑 **Status:** \`Verified & Saved\`\n` +
-                `━━━━━━━━━━━━━━━━━━\n` +
-                `🔥 *Happy Hunting with ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*`,
-                { parse_mode: 'Markdown', ...mainMenu }
-            );
-            
-            // Only update points at the very end to ensure successful farming
-            user.points -= 5;
-            user.registered += 1;
-        } catch (e) {
-            console.log("Final reveal failed, sending backup message");
-            ctx.reply("✅ **Registration Successful!** Check your account.", mainMenu);
-        }
-    }, 10000);
-
-    return;
-};
+    return next();
+});
 // --- CALLBACK HANDLERS ---
 bot.action('verify', async (ctx) => {
     await ctx.answerCbQuery("Checking...");
@@ -447,6 +357,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
