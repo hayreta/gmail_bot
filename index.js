@@ -159,16 +159,17 @@ bot.hears('🛠 Admin Panel', (ctx) => {
 // --- ADMIN: LIST ALL USERS ---
 bot.hears('👥 List All Users', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
+    
     const userIds = Object.keys(db);
-    if (userIds.length === 0) return ctx.reply("📭 **Database is empty.** No hunters found yet.");
+    if (userIds.length === 0) return ctx.reply("📭 Database is empty.");
 
-    // Generate clickable buttons for every user in the database
     const buttons = userIds.map(id => {
-        return [Markup.button.callback(`👤 ID: ${id} | 💰 ${db[id].points} pts`, `view_prof:${id}`)];
+        // Shows "👤 Name | 💰 Points" on the button
+        return [Markup.button.callback(`👤 ${db[id].name || id} | 💰 ${db[id].points}pt`, `view_prof:${id}`)];
     });
 
     ctx.replyWithMarkdown(
-        "📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**\n\nSelect a user to view full intelligence and management options:",
+        "📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**\n\nSelect a hunter to manage:",
         Markup.inlineKeyboard(buttons)
     );
 });
@@ -178,14 +179,15 @@ bot.action(/view_prof:(.+)/, async (ctx) => {
     const targetId = ctx.match[1];
     const u = db[targetId];
 
-    if (!u) return ctx.answerCbQuery("❌ User data corrupted or not found.");
+    if (!u) return ctx.answerCbQuery("❌ User data not found.");
 
     const profileText = 
         `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER INTELLIGENCE** ✨\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
+        `👤 **User:** ${u.name || 'Unknown'}\n` + // Added from your image request
         `🆔 **User ID:** \`${targetId}\`\n` +
         `💰 **Balance:** \`${u.points} Points\`\n` +
-        `🚸 **Referrals:** \`${u.referrals} Users\`\n` +
+        `🚸 **Invites:** \`${u.referrals} Users\`\n` +
         `📊 **Gmails:** \`${u.registered} Accounts\`\n` +
         `📅 **Joined:** \`${u.joined.toLocaleDateString()}\`\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
@@ -393,6 +395,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
