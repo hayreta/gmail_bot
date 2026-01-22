@@ -28,7 +28,7 @@ const mainMenu = Markup.keyboard([
 const adminKeyboard = Markup.keyboard([
     ['📊 Global Stats', '📢 Broadcast'],
     ['➕ Add Points', '➖ Remove Points'],
-    ['👤 View User Profile', '⬅️ Back to User Menu'] // New button added here
+    ['👥 List All Users', '⬅️ Back to User Menu'] // New button added here
 ]).resize();
 
 const cancelKeyboard = Markup.keyboard([['❌ Cancel Operation']]).resize();
@@ -148,14 +148,30 @@ bot.hears('➖ Remove Points', (ctx) => {
     ctx.reply("➖ **Send the User ID to remove points from:**", cancelKeyboard);
 });
 
-bot.hears('👤 View User Profile', (ctx) => {
+// --- BUTTON: LIST ALL USERS ---
+bot.hears('👥 List All Users', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    
+    const userIds = Object.keys(db);
+    if (userIds.length === 0) return ctx.reply("📭 No users found in database.");
+
+    let report = "📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**\n━━━━━━━━━━━━━━━\n";
+    
+    userIds.forEach((id, index) => {
+        const u = db[id];
+        report += `${index + 1}. 🆔 \`${id}\` | 💰 \`${u.points}pt\` | 📧 \`${u.registered}\`\n`;
+    });
+
+    report += "━━━━━━━━━━━━━━━\nTotal Users: " + userIds.length;
+    
+    ctx.replyWithMarkdown(report, adminKeyboard);
+});
+
+// --- BUTTON: VIEW INDIVIDUAL PROFILE ---
+bot.hears('👤 View Profile', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     ctx.session = { step: 'ADMIN_VIEW_USER' };
-    ctx.replyWithMarkdown(
-        "🔍 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER SEARCH**\n\n" +
-        "Please send the **User ID** you want to investigate:",
-        cancelKeyboard
-    );
+    ctx.replyWithMarkdown("🔍 **Enter the User ID to see full details:**", cancelKeyboard);
 });
 
 bot.hears('⬅️ Back to User Menu', (ctx) => ctx.reply("Returning...", mainMenu));
@@ -255,25 +271,23 @@ bot.on('text', async (ctx, next) => {
         return ctx.reply(`✅ Removed ${amount} points from User ${ctx.session.targetId}`, adminKeyboard);
     } 
     
-    // View User Profile Logic
-    // --- VIEW USER PROFILE LOGIC ---
+   // Logic for individual profile lookup
     if (state === 'ADMIN_VIEW_USER' && ctx.from.id === ADMIN_ID) {
         const targetId = ctx.message.text;
-        const userData = db[targetId]; // Access the database simulation
+        const u = db[targetId];
 
-        if (!userData) {
-            return ctx.reply("❌ **User Not Found.** This ID has never started the bot.", adminKeyboard);
-        }
+        if (!u) return ctx.reply("❌ User ID not found.", adminKeyboard);
 
-        ctx.session = null; // Clear session
+        ctx.session = null;
         return ctx.replyWithMarkdown(
-            `👤 **USER PROFILE: ${targetId}**\n` +
+            `👤 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 PROFILE DATA**\n` +
             `━━━━━━━━━━━━━━━━━━\n` +
-            `💰 **Balance:** \`${userData.points} Points\`\n` +
-            `🚸 **Referrals:** \`${userData.referrals} Users\`\n` +
-            `📊 **Gmails Farmed:** \`${userData.registered} Accounts\`\n` +
-            `📅 **Joined On:** \`${userData.joined.toLocaleString()}\`\n` +
-            `🔗 **Referred By:** \`${userData.referredBy || 'Direct Join'}\`\n` +
+            `🆔 **User ID:** \`${targetId}\`\n` +
+            `💰 **Balance:** \`${u.points} Points\`\n` +
+            `🚸 **Invites:** \`${u.referrals} Users\`\n` +
+            `📊 **Farmed:** \`${u.registered} Gmails\`\n` +
+            `📅 **Joined:** \`${u.joined.toLocaleDateString()}\`\n` +
+            `🔗 **Referrer:** \`${u.referredBy || 'None'}\`\n` +
             `━━━━━━━━━━━━━━━━━━`,
             adminKeyboard
         );
@@ -345,6 +359,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
