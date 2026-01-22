@@ -359,54 +359,83 @@ if (state === 'EMAIL') {
         cancelKeyboard
     );
 }
+// --- GMAIL REGISTRATION: STEP 2 (10s Animation) ---
 if (state === 'PASS') {
-        const email = ctx.session.email;
-        const pass = ctx.message.text;
-        const user = getDB(ctx.from.id);
-        ctx.session = null;
-        
-        // --- ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ BEAUTIFUL LOADING SEQUENCE ---
-        const loader = await ctx.reply("🛰 **Connection Established...**\n`[░░░░░░░░░░] 0%`", { parse_mode: 'Markdown' });
+    const email = ctx.session.email;
+    const pass = ctx.message.text;
+    const user = getDB(ctx); 
+    const chatId = ctx.chat.id;
 
-        // Step 1: 5 Seconds
-        setTimeout(() => {
-            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
-                "📡 **Syncing with Farm Database...**\n`[▓▓░░░░░░░░] 25%`", { parse_mode: 'Markdown' });
-        }, 5000);
+    ctx.session = null; // Prevent double-triggering
 
-        // Step 2: 10 Seconds
-        setTimeout(() => {
-            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
-                "🔐 **Encrypting Credentials...**\n`[▓▓▓▓▓▓░░░░] 60%`", { parse_mode: 'Markdown' });
-        }, 10000);
+    if (!email || !pass) {
+        return ctx.reply("❌ **𝐒𝐄𝐒𝐒𝐈𝐎𝐍 𝐄𝐑𝐑𝐎𝐑:** Please start again.", mainMenu);
+    }
 
-        // Step 3: 15 Seconds
-        setTimeout(() => {
-            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
-                "🚀 **Finalizing Registration...**\n`[▓▓▓▓▓▓▓▓▓░] 95%`", { parse_mode: 'Markdown' });
-        }, 15000);
+    // Initial Loading Screen
+    const loader = await ctx.replyWithMarkdown(
+        "🛰 **Establishing Secure Connection...**\n" +
+        "`[░░░░░░░░░░] 0%`", 
+        { disable_web_page_preview: true }
+    );
 
-        // Final Step: 20 Seconds - THE BIG REVEAL
-        setTimeout(() => {
-            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
+    // Timeline logic (10 seconds total)
+    
+    // 2.5 Seconds: Syncing
+    setTimeout(async () => {
+        try {
+            await ctx.telegram.editMessageText(chatId, loader.message_id, null, 
+                "📡 **𝐒𝐲𝐧𝐜𝐢𝐧𝐠 𝐰𝐢𝐭𝐡 𝐅𝐚𝐫𝐦 𝐃𝐚𝐭𝐚𝐛𝐚𝐬𝐞...**\n" +
+                "`[▓▓▓░░░░░░░] 30%`", { parse_mode: 'Markdown' });
+        } catch (e) {}
+    }, 2500);
+
+    // 5.0 Seconds: Encryption
+    setTimeout(async () => {
+        try {
+            await ctx.telegram.editMessageText(chatId, loader.message_id, null, 
+                "🔐 **𝐄𝐧𝐜𝐫𝐲𝐩𝐭𝐢𝐧𝐠 𝐇-𝐇𝐮𝐧𝐭𝐞𝐫 𝐂𝐫𝐞𝐝𝐞𝐧𝐭𝐢𝐚𝐥𝐬...**\n" +
+                "`[▓▓▓▓▓▓░░░░] 65%`", { parse_mode: 'Markdown' });
+        } catch (e) {}
+    }, 5000);
+
+    // 7.5 Seconds: Verification
+    setTimeout(async () => {
+        try {
+            await ctx.telegram.editMessageText(chatId, loader.message_id, null, 
+                "🚀 **𝐕𝐞𝐫𝐢𝐟𝐲𝐢𝐧𝐠 𝐀𝐜𝐜𝐨𝐮𝐧𝐭 𝐈𝐧𝐭𝐞𝐠𝐫𝐢𝐭𝐲...**\n" +
+                "`[▓▓▓▓▓▓▓▓▓░] 90%`", { parse_mode: 'Markdown' });
+        } catch (e) {}
+    }, 7500);
+
+    // 10 Seconds: Final Result
+    setTimeout(async () => {
+        try {
+            const userDisplay = `${user.name} [${user.username}]`;
+            
+            await ctx.telegram.editMessageText(chatId, loader.message_id, null, 
                 `✨ **𝐆𝐌𝐀𝐈𝐋 𝐒𝐔𝐂𝐂𝐄𝐒𝐒𝐅𝐔𝐋𝐋𝐘 𝐅𝐀𝐑𝐌𝐄𝐃** ✨\n` +
                 `━━━━━━━━━━━━━━━━━━\n` +
+                `👤 **User:** ${userDisplay}\n` +
                 `📧 **Email:** \`${email}\`\n` +
                 `🔑 **Pass:** \`${pass}\`\n` +
                 `━━━━━━━━━━━━━━━━━━\n` +
-                `👤 **Owner:** \`${ctx.from.first_name}\`\n` +
                 `💰 **Cost:** \`5 Points\`\n` +
                 `📑 **Status:** \`Verified & Saved\`\n` +
                 `━━━━━━━━━━━━━━━━━━\n` +
                 `🔥 *Happy Hunting with ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*`,
                 { parse_mode: 'Markdown', ...mainMenu }
             );
+            
             user.points -= 5;
             user.registered += 1;
-        }, 20000);
+        } catch (e) {
+            ctx.reply("✅ **Registration Successful!**", mainMenu);
+        }
+    }, 10000);
 
-        return;
-    }
+    return;
+}
 // --- CALLBACK HANDLERS ---
 bot.action('verify', async (ctx) => {
     await ctx.answerCbQuery("Checking...");
@@ -414,6 +443,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
