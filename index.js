@@ -9,19 +9,9 @@ const bot = new Telegraf(BOT_TOKEN);
 bot.use(session());
 
 // DATABASE SIMULATION
-const getDB = (ctx) => {
-    const id = ctx.from.id;
-    if (!db[id]) {
-        db[id] = { 
-            points: 10, 
-            referrals: 0, 
-            registered: 0, 
-            joined: new Date(),
-            // Capture name and username
-            name: ctx.from.first_name,
-            username: ctx.from.username ? `@${ctx.from.username}` : 'No Username'
-        };
-    }
+const db = {}; 
+const getDB = (id) => {
+    if (!db[id]) db[id] = { points: 10, referrals: 0, registered: 0, joined: new Date() };
     return db[id];
 };
 
@@ -72,20 +62,15 @@ async function checkJoin(ctx, next) {
 // --- COMMANDS ---
 
 bot.start(async (ctx) => {
-    const user = getDB(ctx); // Pass the whole 'ctx' here
-    
+    const user = getDB(ctx.from.id);
     const refId = ctx.payload;
     if (refId && refId != ctx.from.id && !user.referredBy) {
         user.referredBy = refId;
-        // Check if referrer exists in DB
-        if (db[refId]) {
-            db[refId].points += 2;
-            db[refId].referrals += 1;
-            bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*`);
-        }
+        const referrer = getDB(refId);
+        referrer.points += 2;
+        referrer.referrals += 1;
+        bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user joined! You earned +2 Points.`, { parse_mode: 'Markdown' });
     }
-    // ... rest of your code
-});
 
     ctx.replyWithMarkdown(
         `👋 *Welcome to the Advanced Gmail Manager*\n\n` +
@@ -413,6 +398,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
