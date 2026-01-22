@@ -164,27 +164,30 @@ bot.hears('👥 List All Users', (ctx) => {
     if (userIds.length === 0) return ctx.reply("📭 Database is empty.");
 
     const buttons = userIds.map(id => {
-        // Shows "👤 Name | 💰 Points" on the button
-        return [Markup.button.callback(`👤 ${db[id].name || id} | 💰 ${db[id].points}pt`, `view_prof:${id}`)];
+        const u = db[id];
+        // Button shows: 👤 Name [@User] | 💰 Pts
+        return [Markup.button.callback(`👤 ${u.name} [${u.username}] | 💰 ${u.points}`, `view_prof:${id}`)];
     });
 
     ctx.replyWithMarkdown(
-        "📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**\n\nSelect a hunter to manage:",
+        "📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**\n\nSelect a hunter to investigate:",
         Markup.inlineKeyboard(buttons)
     );
 });
-
 // --- CALLBACK: VIEW SPECIFIC PROFILE ---
 bot.action(/view_prof:(.+)/, async (ctx) => {
     const targetId = ctx.match[1];
     const u = db[targetId];
 
-    if (!u) return ctx.answerCbQuery("❌ User data not found.");
+    if (!u) return ctx.answerCbQuery("❌ User not found.");
+
+    // Format: 👤 User: Name [@Username]
+    const userDisplay = `${u.name} [${u.username}]`;
 
     const profileText = 
         `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER INTELLIGENCE** ✨\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
-        `👤 **User:** ${u.name || 'Unknown'}\n` + // Added from your image request
+        `👤 **User:** ${userDisplay}\n` + 
         `🆔 **User ID:** \`${targetId}\`\n` +
         `💰 **Balance:** \`${u.points} Points\`\n` +
         `🚸 **Invites:** \`${u.referrals} Users\`\n` +
@@ -395,6 +398,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
