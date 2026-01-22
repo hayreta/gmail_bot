@@ -9,9 +9,19 @@ const bot = new Telegraf(BOT_TOKEN);
 bot.use(session());
 
 // DATABASE SIMULATION
-const db = {}; 
-const getDB = (id) => {
-    if (!db[id]) db[id] = { points: 10, referrals: 0, registered: 0, joined: new Date() };
+const getDB = (ctx) => {
+    const id = ctx.from.id;
+    if (!db[id]) {
+        db[id] = { 
+            points: 10, 
+            referrals: 0, 
+            registered: 0, 
+            joined: new Date(),
+            // Capture name and username
+            name: ctx.from.first_name,
+            username: ctx.from.username ? `@${ctx.from.username}` : 'No Username'
+        };
+    }
     return db[id];
 };
 
@@ -398,6 +408,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
