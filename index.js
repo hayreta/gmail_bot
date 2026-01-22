@@ -439,7 +439,7 @@ if (state === 'PASS') {
     }, 10000);
 
     return;
-}
+};
 // --- CALLBACK HANDLERS ---
 bot.action('verify', async (ctx) => {
     await ctx.answerCbQuery("Checking...");
@@ -447,6 +447,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
