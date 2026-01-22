@@ -156,22 +156,66 @@ bot.hears('🛠 Admin Panel', (ctx) => {
 });
 
 // PASTE THE LIST USERS CODE HERE
+// --- ADMIN: LIST ALL USERS ---
 bot.hears('👥 List All Users', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    
     const userIds = Object.keys(db);
-    if (userIds.length === 0) return ctx.reply("📭 Database is empty.");
+    if (userIds.length === 0) return ctx.reply("📭 **Database is empty.** No hunters found yet.");
 
+    // Generate clickable buttons for every user in the database
     const buttons = userIds.map(id => {
-        return [Markup.button.callback(`👤 ID: ${id} (${db[id].points} pts)`, `view_prof:${id}`)];
+        return [Markup.button.callback(`👤 ID: ${id} | 💰 ${db[id].points} pts`, `view_prof:${id}`)];
     });
 
     ctx.replyWithMarkdown(
-        "📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**\n\nClick a user below to view their full profile:",
+        "📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**\n\nSelect a user to view full intelligence and management options:",
         Markup.inlineKeyboard(buttons)
     );
 });
 
+// --- CALLBACK: VIEW SPECIFIC PROFILE ---
+bot.action(/view_prof:(.+)/, async (ctx) => {
+    const targetId = ctx.match[1];
+    const u = db[targetId];
+
+    if (!u) return ctx.answerCbQuery("❌ User data corrupted or not found.");
+
+    const profileText = 
+        `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER INTELLIGENCE** ✨\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `🆔 **User ID:** \`${targetId}\`\n` +
+        `💰 **Balance:** \`${u.points} Points\`\n` +
+        `🚸 **Referrals:** \`${u.referrals} Users\`\n` +
+        `📊 **Gmails:** \`${u.registered} Accounts\`\n` +
+        `📅 **Joined:** \`${u.joined.toLocaleDateString()}\`\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `⚡ *Quick Admin Actions:*`;
+
+    await ctx.editMessageText(profileText, {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+            [
+                Markup.button.callback("➕ Add Points", `quick_add:${targetId}`),
+                Markup.button.callback("➖ Rem Points", `quick_rem:${targetId}`)
+            ],
+            [Markup.button.callback("⬅️ Back to Directory", "list_users_back")]
+        ])
+    });
+    
+    await ctx.answerCbQuery();
+});
+
+// --- CALLBACK: RETURN TO LIST ---
+bot.action('list_users_back', async (ctx) => {
+    const userIds = Object.keys(db);
+    const buttons = userIds.map(id => [Markup.button.callback(`👤 ID: ${id} | 💰 ${db[id].points} pts`, `view_prof:${id}`)]);
+    
+    await ctx.editMessageText("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard(buttons)
+    });
+    await ctx.answerCbQuery();
+});
 bot.hears('⬅️ Back to User Menu', (ctx) => ctx.reply("Returning...", mainMenu));
 
 // --- TEXT STATE HANDLER ---
@@ -269,36 +313,19 @@ bot.on('text', async (ctx, next) => {
         return ctx.reply(`✅ Removed ${amount} points from User ${ctx.session.targetId}`, adminKeyboard);
     } 
     
-   // Logic for individual profile lookup
-   // --- CALLBACK HANDLERS (Put these at the bottom) ---
-
-bot.action(/view_prof:(.+)/, async (ctx) => {
+   //(Optional) Quick Action Add/Remove Logic
+  bot.action(/quick_add:(.+)/, (ctx) => {
     const targetId = ctx.match[1];
-    const u = getDB(targetId); // Get user from DB
-
-    const profileText = 
-        `👤 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 PROFILE: ${targetId}**\n` +
-        `━━━━━━━━━━━━━━━━━━\n` +
-        `💰 **Balance:** \`${u.points} Points\`\n` +
-        `🚸 **Invites:** \`${u.referrals} Users\`\n` +
-        `📊 **Farmed:** \`${u.registered} Gmails\`\n` +
-        `━━━━━━━━━━━━━━━━━━`;
-
-    await ctx.editMessageText(profileText, {
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([[Markup.button.callback("⬅️ Back to List", "list_users_back")]])
-    });
-    await ctx.answerCbQuery();
+    ctx.session = { step: 'ADMIN_ADD_AMT', targetId: targetId }; // Reuses your existing Add Points logic
+    ctx.reply(`💰 **Enter points to add for ID ${targetId}:**`, cancelKeyboard);
+    ctx.answerCbQuery();
 });
 
-// Logic to go back to the list
-bot.action('list_users_back', (ctx) => {
-    const userIds = Object.keys(db);
-    const buttons = userIds.map(id => [Markup.button.callback(`👤 ID: ${id} (${db[id].points} pts)`, `view_prof:${id}`)]);
-    ctx.editMessageText("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", {
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard(buttons)
-    });
+bot.action(/quick_rem:(.+)/, (ctx) => {
+    const targetId = ctx.match[1];
+    ctx.session = { step: 'ADMIN_REM_AMT', targetId: targetId }; // Reuses your existing Remove Points logic
+    ctx.reply(`💰 **Enter points to remove for ID ${targetId}:**`, cancelKeyboard);
+    ctx.answerCbQuery();
 });
     // Gmail Registration Logic
     if (state === 'EMAIL') {
@@ -366,6 +393,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
