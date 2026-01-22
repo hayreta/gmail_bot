@@ -28,7 +28,7 @@ const mainMenu = Markup.keyboard([
 const adminKeyboard = Markup.keyboard([
     ['📊 Global Stats', '📢 Broadcast'],
     ['➕ Add Points', '➖ Remove Points'],
-    ['⬅️ Back to User Menu']
+    ['👤 View User Profile', '⬅️ Back to User Menu'] // New button added here
 ]).resize();
 
 const cancelKeyboard = Markup.keyboard([['❌ Cancel Operation']]).resize();
@@ -148,6 +148,16 @@ bot.hears('➖ Remove Points', (ctx) => {
     ctx.reply("➖ **Send the User ID to remove points from:**", cancelKeyboard);
 });
 
+bot.hears('👤 View User Profile', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    ctx.session = { step: 'ADMIN_VIEW_USER' };
+    ctx.replyWithMarkdown(
+        "🔍 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER SEARCH**\n\n" +
+        "Please send the **User ID** you want to investigate:",
+        cancelKeyboard
+    );
+});
+
 bot.hears('⬅️ Back to User Menu', (ctx) => ctx.reply("Returning...", mainMenu));
 
 // --- TEXT STATE HANDLER ---
@@ -243,8 +253,32 @@ bot.on('text', async (ctx, next) => {
         target.points -= amount;
         ctx.session = null;
         return ctx.reply(`✅ Removed ${amount} points from User ${ctx.session.targetId}`, adminKeyboard);
-    }
+    } 
+    
+    // View User Profile Logic
+    // --- VIEW USER PROFILE LOGIC ---
+    if (state === 'ADMIN_VIEW_USER' && ctx.from.id === ADMIN_ID) {
+        const targetId = ctx.message.text;
+        const userData = db[targetId]; // Access the database simulation
 
+        if (!userData) {
+            return ctx.reply("❌ **User Not Found.** This ID has never started the bot.", adminKeyboard);
+        }
+
+        ctx.session = null; // Clear session
+        return ctx.replyWithMarkdown(
+            `👤 **USER PROFILE: ${targetId}**\n` +
+            `━━━━━━━━━━━━━━━━━━\n` +
+            `💰 **Balance:** \`${userData.points} Points\`\n` +
+            `🚸 **Referrals:** \`${userData.referrals} Users\`\n` +
+            `📊 **Gmails Farmed:** \`${userData.registered} Accounts\`\n` +
+            `📅 **Joined On:** \`${userData.joined.toLocaleString()}\`\n` +
+            `🔗 **Referred By:** \`${userData.referredBy || 'Direct Join'}\`\n` +
+            `━━━━━━━━━━━━━━━━━━`,
+            adminKeyboard
+        );
+    }
+    
     // Gmail Registration Logic
     if (state === 'EMAIL') {
         if (!ctx.message.text.endsWith('@gmail.com')) return ctx.reply("❌ Send a valid @gmail.com address.");
@@ -311,5 +345,6 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
