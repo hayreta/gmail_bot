@@ -3,7 +3,7 @@ const { Telegraf, Markup, session } = require('telegraf');
 // CONFIGURATION
 const BOT_TOKEN = '8539976683:AAE02vIE0M_YxpKKluoYNQHsogNz-fYfks8';
 const ADMIN_ID = 5522724001;
-const BOT_USERNAME = 'YourBotUsername'; 
+const BOT_USERNAME = ''; 
 
 const bot = new Telegraf(BOT_TOKEN);
 bot.use(session());
@@ -208,15 +208,46 @@ bot.on('text', async (ctx, next) => {
         const user = getDB(ctx.from.id);
         ctx.session = null;
         
-        const loader = await ctx.reply("🛰 *Verifying with Server...*", { parse_mode: 'Markdown' });
+        // --- ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ BEAUTIFUL LOADING SEQUENCE ---
+        const loader = await ctx.reply("🛰 **Connection Established...**\n`[░░░░░░░░░░] 0%`", { parse_mode: 'Markdown' });
+
+        // Step 1: 5 Seconds
         setTimeout(() => {
             ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
-                `✅ **Success!**\n\n📧 *Email:* \`${email}\`\n🔑 *Pass:* \`${pass}\`\n\nYour account has been added to the farm database.`,
+                "📡 **Syncing with Farm Database...**\n`[▓▓░░░░░░░░] 25%`", { parse_mode: 'Markdown' });
+        }, 5000);
+
+        // Step 2: 10 Seconds
+        setTimeout(() => {
+            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
+                "🔐 **Encrypting Credentials...**\n`[▓▓▓▓▓▓░░░░] 60%`", { parse_mode: 'Markdown' });
+        }, 10000);
+
+        // Step 3: 15 Seconds
+        setTimeout(() => {
+            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
+                "🚀 **Finalizing Registration...**\n`[▓▓▓▓▓▓▓▓▓░] 95%`", { parse_mode: 'Markdown' });
+        }, 15000);
+
+        // Final Step: 20 Seconds - THE BIG REVEAL
+        setTimeout(() => {
+            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
+                `✨ **𝐆𝐌𝐀𝐈𝐋 𝐒𝐔𝐂𝐂𝐄𝐒𝐒𝐅𝐔𝐋𝐋𝐘 𝐅𝐀𝐑𝐌𝐄𝐃** ✨\n` +
+                `━━━━━━━━━━━━━━━━━━\n` +
+                `📧 **Email:** \`${email}\`\n` +
+                `🔑 **Pass:** \`${pass}\`\n` +
+                `━━━━━━━━━━━━━━━━━━\n` +
+                `👤 **Owner:** \`${ctx.from.first_name}\`\n` +
+                `💰 **Cost:** \`5 Points\`\n` +
+                `📑 **Status:** \`Verified & Saved\`\n` +
+                `━━━━━━━━━━━━━━━━━━\n` +
+                `🔥 *Happy Hunting with ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*`,
                 { parse_mode: 'Markdown', ...mainMenu }
             );
             user.points -= 5;
             user.registered += 1;
-        }, 2000);
+        }, 20000);
+
         return;
     }
     return next();
@@ -229,3 +260,4 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
