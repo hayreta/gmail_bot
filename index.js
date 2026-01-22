@@ -127,8 +127,13 @@ bot.hears('📊 Global Stats', (ctx) => {
 
 bot.hears('📢 Broadcast', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.session = { step: 'BROADCAST' };
-    ctx.reply("📢 **Send the message you want to broadcast to all users:**", cancelKeyboard);
+    ctx.session = { step: 'BROADCAST_PREVIEW' };
+    ctx.replyWithMarkdown(
+        "🛠 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 ADVANCED BROADCAST**\n\n" +
+        "➡️ *Send me anything now:* a photo, a video, a forwarded post, or text with buttons.\n\n" +
+        "I will show you a preview before sending it to everyone.",
+        cancelKeyboard
+    );
 });
 
 bot.hears('➕ Add Points', (ctx) => {
@@ -156,14 +161,60 @@ bot.on('text', async (ctx, next) => {
     const state = ctx.session?.step;
 
     // Broadcast Logic
-    if (state === 'BROADCAST' && ctx.from.id === ADMIN_ID) {
-        const users = Object.keys(db);
-        users.forEach(id => {
-            bot.telegram.sendMessage(id, ctx.message.text).catch(e => console.log(`Error sending to ${id}`));
-        });
+ bot.on('message', async (ctx, next) => {
+    if (ctx.message?.text === '❌ Cancel Operation') {
         ctx.session = null;
-        return ctx.reply(`✅ **Broadcast Sent successfully to ${users.length} users.**`, adminKeyboard);
+        return ctx.reply("🚫 Operation Terminated.", mainMenu);
     }
+
+    const state = ctx.session?.step;
+
+    // --- STEP 1: SHOW PREVIEW ---
+    if (state === 'BROADCAST_PREVIEW' && ctx.from.id === ADMIN_ID) {
+        ctx.session.msgToCopy = ctx.message.message_id; // Save the message ID
+        ctx.session.step = 'BROADCAST_CONFIRM';
+
+        await ctx.reply("👇 **PREVIEW OF YOUR POST:**");
+        
+        // Show the admin exactly what will be sent
+        await ctx.telegram.copyMessage(ctx.chat.id, ctx.chat.id, ctx.message.message_id);
+
+        return ctx.reply("⬆️ **Does this look correct?**", 
+            Markup.keyboard([['✅ CONFIRM & SEND'], ['❌ Cancel Operation']]).resize()
+        );
+    }
+
+    // --- STEP 2: EXECUTE SEND ---
+    if (state === 'BROADCAST_CONFIRM' && ctx.message.text === '✅ CONFIRM & SEND' && ctx.from.id === ADMIN_ID) {
+        const users = Object.keys(db);
+        let success = 0;
+        let failed = 0;
+
+        const statusMsg = await ctx.reply(`🚀 **Broadcasting to ${users.length} users...**`);
+
+        for (const userId of users) {
+            try {
+                // copyMessage preserves captions, images, buttons, and formatting
+                await ctx.telegram.copyMessage(userId, ctx.chat.id, ctx.session.msgToCopy);
+                success++;
+            } catch (e) {
+                failed++;
+            }
+        }
+
+        ctx.session = null;
+        return ctx.replyWithMarkdown(
+            `📢 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 BROADCAST COMPLETE**\n\n` +
+            `✅ *Delivered:* ${success}\n` +
+            `❌ *Failed:* ${failed}\n` +
+            `📊 *Total Reach:* ${success + failed}`,
+            adminKeyboard
+        );
+    }
+
+    // ... (rest of your registration logic: EMAIL, PASS, etc.)
+    return next();
+});
 
     // Add Points Logic
     if (state === 'ADD_POINTS_ID' && ctx.from.id === ADMIN_ID) {
@@ -260,4 +311,5 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
