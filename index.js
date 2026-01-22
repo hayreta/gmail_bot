@@ -72,15 +72,20 @@ async function checkJoin(ctx, next) {
 // --- COMMANDS ---
 
 bot.start(async (ctx) => {
-    const user = getDB(ctx.from.id);
+    const user = getDB(ctx); // Pass the whole 'ctx' here
+    
     const refId = ctx.payload;
     if (refId && refId != ctx.from.id && !user.referredBy) {
         user.referredBy = refId;
-        const referrer = getDB(refId);
-        referrer.points += 2;
-        referrer.referrals += 1;
-        bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user joined! You earned +2 Points.`, { parse_mode: 'Markdown' });
+        // Check if referrer exists in DB
+        if (db[refId]) {
+            db[refId].points += 2;
+            db[refId].referrals += 1;
+            bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*`);
+        }
     }
+    // ... rest of your code
+});
 
     ctx.replyWithMarkdown(
         `👋 *Welcome to the Advanced Gmail Manager*\n\n` +
@@ -408,6 +413,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
