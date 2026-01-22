@@ -347,35 +347,42 @@ bot.action(/quick_rem:(.+)/, (ctx) => {
         ctx.session = null;
         
         // --- ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ BEAUTIFUL LOADING SEQUENCE ---
+     if (state === 'PASS') {
+        const email = ctx.session.email;
+        const pass = ctx.message.text;
+        const user = getDB(ctx); // Using the fixed getDB(ctx)
+        ctx.session = null;
+        
+        // --- ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ FAST LOADING SEQUENCE (10 SEC TOTAL) ---
         const loader = await ctx.reply("🛰 **Connection Established...**\n`[░░░░░░░░░░] 0%`", { parse_mode: 'Markdown' });
 
-        // Step 1: 5 Seconds
+        // Step 1: 2.5 Seconds
         setTimeout(() => {
             ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
-                "📡 **Syncing with Farm Database...**\n`[▓▓░░░░░░░░] 25%`", { parse_mode: 'Markdown' });
+                "📡 **Syncing with Farm Database...**\n`[▓▓▓░░░░░░░] 30%`", { parse_mode: 'Markdown' });
+        }, 2500);
+
+        // Step 2: 5 Seconds
+        setTimeout(() => {
+            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
+                "🔐 **Encrypting Credentials...**\n`[▓▓▓▓▓▓░░░░] 65%`", { parse_mode: 'Markdown' });
         }, 5000);
 
-        // Step 2: 10 Seconds
+        // Step 3: 7.5 Seconds
         setTimeout(() => {
             ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
-                "🔐 **Encrypting Credentials...**\n`[▓▓▓▓▓▓░░░░] 60%`", { parse_mode: 'Markdown' });
-        }, 10000);
+                "🚀 **Finalizing Registration...**\n`[▓▓▓▓▓▓▓▓▓░] 90%`", { parse_mode: 'Markdown' });
+        }, 7500);
 
-        // Step 3: 15 Seconds
-        setTimeout(() => {
-            ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
-                "🚀 **Finalizing Registration...**\n`[▓▓▓▓▓▓▓▓▓░] 95%`", { parse_mode: 'Markdown' });
-        }, 15000);
-
-        // Final Step: 20 Seconds - THE BIG REVEAL
+        // Final Step: 10 Seconds - THE BIG REVEAL
         setTimeout(() => {
             ctx.telegram.editMessageText(ctx.chat.id, loader.message_id, null, 
                 `✨ **𝐆𝐌𝐀𝐈𝐋 𝐒𝐔𝐂𝐂𝐄𝐒𝐒𝐅𝐔𝐋𝐋𝐘 𝐅𝐀𝐑𝐌𝐄𝐃** ✨\n` +
                 `━━━━━━━━━━━━━━━━━━\n` +
+                `👤 **User:** ${user.name} [${user.username}]\n` +
                 `📧 **Email:** \`${email}\`\n` +
                 `🔑 **Pass:** \`${pass}\`\n` +
                 `━━━━━━━━━━━━━━━━━━\n` +
-                `👤 **Owner:** \`${ctx.from.first_name}\`\n` +
                 `💰 **Cost:** \`5 Points\`\n` +
                 `📑 **Status:** \`Verified & Saved\`\n` +
                 `━━━━━━━━━━━━━━━━━━\n` +
@@ -384,12 +391,10 @@ bot.action(/quick_rem:(.+)/, (ctx) => {
             );
             user.points -= 5;
             user.registered += 1;
-        }, 20000);
+        }, 10000);
 
         return;
     }
-    return next();
-});
 
 // --- CALLBACK HANDLERS ---
 bot.action('verify', async (ctx) => {
@@ -398,6 +403,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
