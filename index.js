@@ -50,7 +50,7 @@ async function checkJoin(ctx, next) {
             const member = await ctx.telegram.getChatMember(chan, ctx.from.id);
             if (['left', 'kicked'].includes(member.status)) {
                 return ctx.replyWithPhoto(
-                    { url: 'https://i.ibb.co/v6yXyXG/image-b8cbf6.png' },
+                    { url: 'https://t.me/Unlimited_GmailA/2888' },
                     {
                         caption: "⛔️ **ACCESS DENIED**\n\nYou must join our official channels to use this bot's premium features.",
                         parse_mode: 'Markdown',
@@ -315,6 +315,7 @@ bot.action('refresh_ref', (ctx) => {
 bot.action('verify', (ctx) => ctx.reply("Verification updated. Please send /start."));
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
