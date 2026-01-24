@@ -1,12 +1,12 @@
 const { Telegraf, Markup, session } = require('telegraf');
 
 // CONFIGURATION
-const BOT_TOKEN = '8539976683:AAE02vIE0M_YxpKKluoYNQHsogNz-fYfks8';
+const BOT_TOKEN = process.env.BOT_TOKEN || '8539976683:AAE02vIE0M_YxpKKluoYNQHsogNz-fYfks8';
 const ADMIN_ID = 5522724001;
 const BOT_USERNAME = 'createUnlimitedGmail_Bot'; 
 
 const bot = new Telegraf(BOT_TOKEN);
-const db = {}; // FIXED: Added missing database object
+const db = {}; // In-memory database
 bot.use(session());
 
 // DATABASE SIMULATION
@@ -39,7 +39,6 @@ const getMenu = (ctx) => {
     }
     return Markup.keyboard(buttons).resize();
 };
-};
 
 const adminKeyboard = Markup.keyboard([
     ['📊 Global Stats', '📢 Broadcast'],
@@ -61,11 +60,13 @@ async function checkJoin(ctx, next) {
                 joinedAll = false;
                 break;
             }
-        } catch (e) { continue; }
+        } catch (e) { 
+            joinedAll = false;
+            break;
+        }
     }
 
     if (!joinedAll) {
-        // IMAGE RESTORED FOR ACCESS DENIED
         return ctx.replyWithPhoto(
             { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' },
             {
@@ -92,7 +93,10 @@ bot.action('verify_and_delete', async (ctx) => {
                 joinedAll = false;
                 break;
             }
-        } catch (e) { continue; }
+        } catch (e) { 
+            joinedAll = false;
+            break;
+        }
     }
 
     if (joinedAll) {
@@ -103,20 +107,20 @@ bot.action('verify_and_delete', async (ctx) => {
         const user = getDB(ctx);
         await ctx.answerCbQuery("Success! Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ ✅");
         
-        // IMAGE RESTORED FOR SUCCESS MESSAGE
         await ctx.replyWithPhoto(
             { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' },
             {
                 caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
                 parse_mode: 'Markdown',
-                ...mainMenu
+                ...getMenu(ctx)
             }
         );
     } else {
         await ctx.answerCbQuery("❌ You still haven't joined all channels!", { show_alert: true });
     }
 });
-//Command
+
+// --- START COMMAND ---
 bot.start(checkJoin, async (ctx) => {
     const user = getDB(ctx);
     const refId = ctx.payload;
@@ -128,33 +132,35 @@ bot.start(checkJoin, async (ctx) => {
         if (referrer) {
             referrer.points += 1; 
             referrer.referrals += 1;
-            bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user earned +1 Point.`).catch(()=>{});
+            try {
+                await bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user earned +1 Point.`, { parse_mode: 'Markdown' });
+            } catch (e) {}
         }
     }
 
-    // IMAGE RESTORED FOR START COMMAND WITH DYNAMIC MENU
     await ctx.replyWithPhoto(
         { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' }, 
         {
             caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
             parse_mode: 'Markdown',
-            ...getMenu(ctx) // <--- This dynamically hides/shows the Admin button
+            ...getMenu(ctx)
         }
     );
 });
+
 // --- MAIN MENU HANDLERS ---
 bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
     const user = getDB(ctx);
     if (user.points < 5) {
-        return ctx.replyWithMarkdown(`⚠️ *Insufficient Balance*\n\nYou need **5 Points** to register.\n*Current Balance:* ${user.points} pts`);
+        return ctx.replyWithMarkdown(`⚠️ *Insufficient Balance*\n\nYou need **5 Points** to register.\n*Current Balance:* ${user.points} pts`, getMenu(ctx));
     }
-    ctx.session = { step: 'EMAIL' };
+    ctx.session.step = 'EMAIL';
     ctx.replyWithMarkdown("📧 **Please send the Gmail Address**\n\n_Example: name@gmail.com_", cancelKeyboard);
 });
 
 bot.hears('⚙️ Account', (ctx) => {
     const user = getDB(ctx);
-    ctx.replyWithMarkdown(`⭐ *PREMIUM ACCOUNT STATUS*\n━━━━━━━━━━━━━━━━━━\n🆔 *User ID:* \`${ctx.from.id}\`\n💰 *Balance:* \`${user.points} Points\`\n📊 *Registered:* \`${user.registered} Gmails\`\n🚸 *Invites:* \`${user.referrals} Users\`\n━━━━━━━━━━━━━━━━━━`, mainMenu);
+    ctx.replyWithMarkdown(`⭐ *PREMIUM ACCOUNT STATUS*\n━━━━━━━━━━━━━━━━━━\n🆔 *User ID:* \`${ctx.from.id}\`\n💰 *Balance:* \`${user.points} Points\`\n📊 *Registered:* \`${user.registered} Gmails\`\n🚸 *Invites:* \`${user.referrals} Users\`\n━━━━━━━━━━━━━━━━━━`, getMenu(ctx));
 });
 
 bot.hears('🚸 My Referrals', (ctx) => {
@@ -162,12 +168,10 @@ bot.hears('🚸 My Referrals', (ctx) => {
     const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
     const totalEarned = (user.referrals || 0) * 1;
     ctx.replyWithMarkdown(`✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n━━━━━━━━━━━━━━━━━━\n👤 **User:** ${user.name}\n👥 **Total Referrals:** \`${user.referrals || 0}\`\n💰 **Total Earned:** \`${totalEarned} Points\`\n━━━━━━━━━━━━━━━━━━\n🎁 **Reward:** \`1 Point\` per join!\n\n🔗 **Your Unique Link:**\n\`${link}\``, 
-        Markup.inlineKeyboard([[Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],[Markup.button.callback("📊 Refresh Stats", "refresh_ref")]]));
+        Markup.inlineKeyboard([[Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],[Markup.button.callback("📊 Refresh Stats", "refresh_ref")]]) );
 });
-// --- HELP MESSAGE HANDLER WITH AUTO-CLEANUP ---
 
 // --- HELP MESSAGE HANDLER ---
-// --- 1. THE HELP COMMAND ---
 bot.hears('🏥 Help', async (ctx) => {
     const helpMessage = 
         `🌟 **Account Registration System** 🌟\n\n` +
@@ -189,7 +193,7 @@ bot.hears('🏥 Help', async (ctx) => {
     );
 });
 
-// --- 2. THE DELETE ACTION ---
+// --- DELETE ACTION ---
 bot.action('close_help', async (ctx) => {
     try {
         await ctx.deleteMessage();
@@ -199,18 +203,7 @@ bot.action('close_help', async (ctx) => {
     }
 });
 
-// --- 3. THE AUTO-CLEANUP (When any other menu button is pressed) ---
-bot.on('text', async (ctx, next) => {
-    // If the user clicks a menu button while a help message is active
-    if (ctx.session?.helpMsgId) {
-        try {
-            await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.helpMsgId);
-            ctx.session.helpMsgId = null;
-        } catch (e) {}
-    }
-    return next();
-});
-
+// --- ADMIN PANEL ---
 bot.hears('🛠 Admin Panel', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ This area is restricted to Developers.");
     ctx.reply("🛠 **Advanced Admin Dashboard**\nSelect a management tool:", adminKeyboard);
@@ -224,19 +217,19 @@ bot.hears('📊 Global Stats', (ctx) => {
 
 bot.hears('📢 Broadcast', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.session = { step: 'BROADCAST_PREVIEW' };
+    ctx.session.step = 'BROADCAST_PREVIEW';
     ctx.replyWithMarkdown("🛠 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 ADVANCED BROADCAST**\n\n➡️ *Send me anything now...*", cancelKeyboard);
 });
 
 bot.hears('➕ Add Points', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.session = { step: 'ADD_POINTS_ID' };
+    ctx.session.step = 'ADD_POINTS_ID';
     ctx.reply("➕ **Send the User ID to add points to:**", cancelKeyboard);
 });
 
 bot.hears('➖ Remove Points', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
-    ctx.session = { step: 'REM_POINTS_ID' };
+    ctx.session.step = 'REM_POINTS_ID';
     ctx.reply("➖ **Send the User ID to remove points from:**", cancelKeyboard);
 });
 
@@ -248,15 +241,14 @@ bot.hears('👥 List All Users', (ctx) => {
     ctx.replyWithMarkdown("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", Markup.inlineKeyboard(buttons));
 });
 
-bot.hears('⬅️ Back to User Menu', (ctx) => ctx.reply("Returning...", mainMenu));
+bot.hears('⬅️ Back to User Menu', (ctx) => ctx.reply("Returning...", getMenu(ctx)));
 
 // --- TEXT STATE HANDLER (THE ENGINE) ---
-
 bot.on('message', async (ctx, next) => {
     const text = ctx.message?.text;
     if (text === '❌ Cancel Operation') {
-        ctx.session = null;
-        return ctx.reply("🚫 Operation Terminated.", mainMenu);
+        ctx.session = {};
+        return ctx.reply("🚫 Operation Terminated.", getMenu(ctx));
     }
 
     const state = ctx.session?.step;
@@ -275,9 +267,11 @@ bot.on('message', async (ctx, next) => {
         const users = Object.keys(db);
         await ctx.reply(`🚀 **Broadcasting to ${users.length} users...**`);
         for (const userId of users) {
-            try { await ctx.telegram.copyMessage(userId, ctx.chat.id, ctx.session.msgToCopy); } catch (e) {}
+            try { 
+                await ctx.telegram.copyMessage(userId, ctx.chat.id, ctx.session.msgToCopy); 
+            } catch (e) {}
         }
-        ctx.session = null;
+        ctx.session = {};
         return ctx.reply("📢 **BROADCAST COMPLETE**", adminKeyboard);
     }
 
@@ -289,11 +283,16 @@ bot.on('message', async (ctx, next) => {
     }
     if (state === 'ADD_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
         const amount = parseInt(text);
+        if (isNaN(amount) || amount < 0) {
+            return ctx.reply("❌ Enter a valid positive number.");
+        }
         const targetId = ctx.session.targetId;
         const target = getDB(targetId);
         target.points += amount;
-        bot.telegram.sendMessage(targetId, `🎁 **Bonus!** Admin added ${amount} points.`).catch(()=>{});
-        ctx.session = null;
+        try {
+            await bot.telegram.sendMessage(targetId, `🎁 **Bonus!** Admin added ${amount} points.`, { parse_mode: 'Markdown' });
+        } catch (e) {}
+        ctx.session = {};
         return ctx.reply(`✅ Added ${amount} points to User ${targetId}`, adminKeyboard);
     }
 
@@ -305,10 +304,13 @@ bot.on('message', async (ctx, next) => {
     }
     if (state === 'REM_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
         const amount = parseInt(text);
+        if (isNaN(amount) || amount < 0) {
+            return ctx.reply("❌ Enter a valid positive number.");
+        }
         const targetId = ctx.session.targetId;
         const target = getDB(targetId);
-        target.points -= amount;
-        ctx.session = null;
+        target.points = Math.max(0, target.points - amount);
+        ctx.session = {};
         return ctx.reply(`✅ Removed ${amount} points from User ${targetId}`, adminKeyboard);
     }
 
@@ -325,8 +327,8 @@ bot.on('message', async (ctx, next) => {
         const user = getDB(ctx);
         user.points -= 5;
         user.registered += 1;
-        ctx.session = null;
-        return ctx.replyWithMarkdown(`✅ **Success!**\n\n📧 *Email:* \`${email}\`\n\nBalance: ${user.points}`, mainMenu);
+        ctx.session = {};
+        return ctx.replyWithMarkdown(`✅ **Success!**\n\n📧 *Email:* \`${email}\`\n\nBalance: ${user.points}`, getMenu(ctx));
     }
 });
 
@@ -340,13 +342,15 @@ bot.action(/view_prof:(.+)/, async (ctx) => {
 });
 
 bot.action(/quick_add:(.+)/, (ctx) => {
-    ctx.session = { step: 'ADD_POINTS_AMT', targetId: ctx.match[1] };
+    ctx.session.step = 'ADD_POINTS_AMT';
+    ctx.session.targetId = ctx.match[1];
     ctx.reply(`💰 **Enter points to add for ID ${ctx.match[1]}:**`, cancelKeyboard);
     ctx.answerCbQuery();
 });
 
 bot.action(/quick_rem:(.+)/, (ctx) => {
-    ctx.session = { step: 'REM_POINTS_AMT', targetId: ctx.match[1] };
+    ctx.session.step = 'REM_POINTS_AMT';
+    ctx.session.targetId = ctx.match[1];
     ctx.reply(`💰 **Enter points to remove for ID ${ctx.match[1]}:**`, cancelKeyboard);
     ctx.answerCbQuery();
 });
@@ -363,17 +367,3 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
