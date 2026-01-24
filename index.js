@@ -28,14 +28,14 @@ const getDB = (ctx) => {
 const CHANNELS = ['@Hayre37', '@Digital_Claim', '@BIgsew_community', '@hayrefx'];
 
 // --- KEYBOARDS ---
+// Function to generate the menu dynamically
 const getMenu = (ctx) => {
-    // Basic buttons for everyone
-    let buttons = [
+    const buttons = [
         ['➕ Register New Gmail'],
         ['⚙️ Account', '🚸 My Referrals'],
         ['🏥 Help']
     ];
-    // ONLY add the Admin Panel button if the ID matches yours
+    // Check against your ADMIN_ID constant
     if (ctx.from.id === ADMIN_ID) {
         buttons.push(['🛠 Admin Panel']);
     }
@@ -119,27 +119,32 @@ bot.action('verify_and_delete', async (ctx) => {
 });
 //Command
 bot.start(checkJoin, async (ctx) => {
-    const user = getDB(ctx);
+    // 1. Get user from your new persistent DB
+    const user = getDB(ctx); 
     const refId = ctx.payload;
 
-    // Referral Logic
+    // 2. Referral Logic (Only if they are new)
     if (refId && refId != ctx.from.id && !user.referredBy) {
         user.referredBy = refId;
         const referrer = getDB(refId); 
         if (referrer) {
             referrer.points += 1; 
             referrer.referrals += 1;
-            bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user earned +1 Point.`).catch(()=>{});
+            // Notify the referrer - using your fix to ensure they exist in DB
+            bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user joined! You earned +1 Point.`, { parse_mode: 'Markdown' }).catch(()=>{});
         }
     }
 
-    // IMAGE RESTORED FOR START COMMAND WITH DYNAMIC MENU
+    // 3. Beautiful Welcome with Restored Image
     await ctx.replyWithPhoto(
         { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' }, 
         {
-            caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
+            caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n` +
+                     `👤 **User:** ${user.name}\n` +
+                     `💰 **Points:** \`${user.points}\`\n\n` +
+                     `Invite friends to earn points and start farming!`,
             parse_mode: 'Markdown',
-            ...getMenu(ctx) // <--- This dynamically hides/shows the Admin button
+            ...getMenu(ctx) // Admin panel only shows for you
         }
     );
 });
@@ -364,6 +369,7 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
