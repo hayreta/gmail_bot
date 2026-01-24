@@ -1,26 +1,13 @@
+update my package
 {
-  "name": "createUnlimitedGmail-bot",
+  "name": " createUnlimitedGmail Bott",
   "version": "1.1.0",
   "description": "Premium Gmail Registration Bot",
-  "main": "bot.js",
-  "type": "commonjs",
+  "main": "index.js",
   "scripts": {
-    "start": "node bot.js"
-  },
-  "keywords": [
-    "telegram",
-    "bot",
-    "gmail",
-    "registration",
-    "premium"
-  ],
-  "author": "",
-  "license": "ISC",
-  "engines": {
-    "node": ">=16.0.0"
+    "start": "node index.js"
   },
   "dependencies": {
-    "telegraf": "^4.16.3",
-    "dotenv": "^16.4.5"
+    "telegraf": "^4.16.3"
   }
 }
