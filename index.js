@@ -209,6 +209,93 @@ const animateLoader = async (ctx, duration = 10000) => {
     });
 };
 
+// --- EMAIL VALIDATION FLOW WITH DYNAMIC CHECKS ---
+const validateEmail = async (ctx, email) => {
+    // Simulate email uniqueness check
+    const existingEmails = Object.values(db).flatMap(u => u.emails || []);
+    return !existingEmails.includes(email);
+};
+
+const validatePassword = (password) => {
+    // Check password strength
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    const isLongEnough = password.length >= 8;
+    
+    const score = [hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar, isLongEnough].filter(Boolean).length;
+    
+    return {
+        isValid: score >= 3,
+        strength: score === 5 ? 'Strong' : score >= 3 ? 'Good' : 'Weak',
+        score: score,
+        suggestions: {
+            uppercase: !hasUpperCase ? '• Add uppercase letters' : null,
+            lowercase: !hasLowerCase ? '• Add lowercase letters' : null,
+            numbers: !hasNumbers ? '• Add numbers' : null,
+            special: !hasSpecialChar ? '• Add special characters' : null,
+            length: !isLongEnough ? '• Must be at least 8 characters' : null
+        }
+    };
+};
+
+const animateSuccessLoader = async (ctx, email, duration = 10000) => {
+    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    const steps = [
+        { emoji: '✅', text: 'Email verified successfully...', progress: 15 },
+        { emoji: '🔐', text: 'Password strength validated...', progress: 30 },
+        { emoji: '📧', text: 'Creating Gmail account...', progress: 45 },
+        { emoji: '🌐', text: 'Syncing with Google servers...', progress: 60 },
+        { emoji: '📱', text: 'Setting up recovery options...', progress: 75 },
+        { emoji: '🎯', text: 'Finalizing account setup...', progress: 90 },
+        { emoji: '🎉', text: 'Account ready for use...', progress: 100 }
+    ];
+
+    const msg = await ctx.replyWithMarkdown(
+        `🌈 *ACCOUNT CREATION IN PROGRESS* 🌈\n\n` +
+        `${frames[0]} Initializing...\n\n` +
+        `Progress: ${'█'.repeat(0)}░░░░░░░░░░ 0%`
+    );
+
+    let frameIdx = 0;
+    let stepIdx = 0;
+    const startTime = Date.now();
+    
+    return new Promise(async (resolve) => {
+        const interval = setInterval(async () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(100, Math.floor((elapsed / duration) * 100));
+            
+            stepIdx = Math.floor((progress / 100) * steps.length);
+            if (stepIdx >= steps.length) stepIdx = steps.length - 1;
+            
+            const currentStep = steps[stepIdx];
+            const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+            
+            try {
+                await ctx.telegram.editMessageText(
+                    ctx.chat.id,
+                    msg.message_id,
+                    null,
+                    `🌈 *ACCOUNT CREATION IN PROGRESS* 🌈\n\n` +
+                    `${frames[frameIdx % frames.length]} ${currentStep.text}\n\n` +
+                    `Progress: ${progressBar} ${progress}%\n\n` +
+                    `📧 Email: \`${email}\``,
+                    { parse_mode: 'Markdown' }
+                );
+            } catch (e) {}
+            
+            frameIdx++;
+            
+            if (elapsed >= duration) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 300);
+    });
+};
+
 // --- MAIN MENU HANDLERS ---
 bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
     const user = getDB(ctx);
@@ -398,21 +485,95 @@ bot.on('message', async (ctx, next) => {
         return ctx.reply(`✅ Removed ${amount} points from User ${targetId}`, adminKeyboard);
     }
 
-    // Gmail Registration Logic
+    // Gmail Registration Logic - EMAIL VALIDATION
     if (state === 'EMAIL') {
-        if (!text.endsWith('@gmail.com')) return ctx.reply("❌ Send a valid @gmail.com.");
+        // Format check
+        if (!text.match(/^[^\s@]+@gmail\.com$/)) {
+            return ctx.replyWithMarkdown(
+                `❌ *Invalid Email Format*\n\n` +
+                `━━━━━━━━━━━━━━━━━━\n` +
+                `✗ Must be a valid Gmail address\n` +
+                `✗ Format: \`yourname@gmail.com\`\n` +
+                `\n📝 Please try again:`,
+                cancelKeyboard
+            );
+        }
+
+        // Check if email already exists
+        const isNewEmail = await validateEmail(ctx, text);
+        if (!isNewEmail) {
+            return ctx.replyWithMarkdown(
+                `⚠️ *Email Already Registered*\n\n` +
+                `━━━━━━━━━━━━━━━━━━\n` +
+                `This email is already in use.\n\n` +
+                `🆕 Please provide a different Gmail:`,
+                cancelKeyboard
+            );
+        }
+
         ctx.session.email = text;
         ctx.session.step = 'PASS';
-        return ctx.reply("🔑 **Please send the Password**");
+        return ctx.replyWithMarkdown(
+            `✅ *Email Verified*\n\n` +
+            `📧 \`${text}\`\n\n` +
+            `━━━━━━━━━━━━━━━━━━\n` +
+            `Now create a strong password:\n` +
+            `• At least 8 characters\n` +
+            `• Mix of uppercase & lowercase\n` +
+            `• Include numbers & symbols\n\n` +
+            `🔐 Send your password:`,
+            cancelKeyboard
+        );
     }
 
     if (state === 'PASS') {
         const email = ctx.session.email;
         const user = getDB(ctx);
+        
+        // Validate password strength
+        const passwordCheck = validatePassword(text);
+        
+        if (!passwordCheck.isValid) {
+            const suggestions = Object.values(passwordCheck.suggestions)
+                .filter(Boolean)
+                .join('\n');
+            
+            return ctx.replyWithMarkdown(
+                `⚠️ *Password Too Weak*\n\n` +
+                `━━━━━━━━━━━━━━━━━━\n` +
+                `Strength: ${passwordCheck.strength}\n\n` +
+                `Suggestions:\n${suggestions}\n\n` +
+                `🔐 Please try a stronger password:`,
+                cancelKeyboard
+            );
+        }
+
+        // Store email in user's email list
+        if (!user.emails) user.emails = [];
+        user.emails.push(email);
+        
+        // Run success animation
+        await animateSuccessLoader(ctx, email, 10000);
+        
+        // Deduct points and update stats
         user.points -= 5;
         user.registered += 1;
+        
+        // Final success message
         ctx.session = {};
-        return ctx.replyWithMarkdown(`✅ **Success!**\n\n📧 *Email:* \`${email}\`\n\nBalance: ${user.points}`, getMenu(ctx));
+        return ctx.replyWithMarkdown(
+            `🎉 *ACCOUNT SUCCESSFULLY CREATED* 🎉\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `✅ Email: \`${email}\`\n` +
+            `🔐 Password Strength: ${passwordCheck.strength}\n` +
+            `💰 Points Deducted: -5 pts\n` +
+            `💎 New Balance: ${user.points} pts\n` +
+            `📊 Total Registered: ${user.registered} accounts\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `✨ Your account is ready to use!\n` +
+            `🚀 Secure all credentials safely.`,
+            getMenu(ctx)
+        );
     }
 });
 
