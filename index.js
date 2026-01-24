@@ -3,18 +3,26 @@ const { Telegraf, Markup, session } = require('telegraf');
 // CONFIGURATION
 const BOT_TOKEN = '8539976683:AAE02vIE0M_YxpKKluoYNQHsogNz-fYfks8';
 const ADMIN_ID = 5522724001;
-const BOT_USERNAME = ''; 
+const BOT_USERNAME = 'createUnlimitedGmail_Bot'; 
 
 const bot = new Telegraf(BOT_TOKEN);
 bot.use(session());
 
 // DATABASE SIMULATION
-const db = {}; 
-const getDB = (id) => {
-    if (!db[id]) db[id] = { points: 10, referrals: 0, registered: 0, joined: new Date() };
+const getDB = (ctx) => {
+    const id = ctx.from.id;
+    if (!db[id]) {
+        db[id] = { 
+            points: 0, // Set starting balance to 0
+            referrals: 0, 
+            registered: 0, 
+            joined: new Date(),
+            name: ctx.from.first_name || "User",
+            username: ctx.from.username ? `@${ctx.from.username}` : "No Username"
+        };
+    }
     return db[id];
 };
-
 const CHANNELS = ['@Hayre37', '@Digital_Claim', '@BIgsew_community', '@hayrefx'];
 
 // --- KEYBOARDS ---
@@ -62,20 +70,31 @@ async function checkJoin(ctx, next) {
 // --- COMMANDS ---
 
 bot.start(async (ctx) => {
-    const user = getDB(ctx.from.id);
+    const user = getDB(ctx);
     const refId = ctx.payload;
+
+    // Referral Logic
     if (refId && refId != ctx.from.id && !user.referredBy) {
         user.referredBy = refId;
-        const referrer = getDB(refId);
-        referrer.points += 2;
-        referrer.referrals += 1;
-        bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user joined! You earned +2 Points.`, { parse_mode: 'Markdown' });
+        const referrer = db[refId]; 
+        if (referrer) {
+            referrer.points += 1; // Reward set to 1 point
+            referrer.referrals += 1;
+            bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user joined! You earned +1 Point.`, { parse_mode: 'Markdown' });
+        }
     }
 
-    ctx.replyWithMarkdown(
-        `👋 *Welcome to the Advanced Gmail Manager*\n\n` +
-        `Use the menu below to start registering accounts or checking your balance.`,
-        mainMenu
+    // Welcome Message
+    await ctx.replyWithPhoto(
+        { url: 'https://i.ibb.co/v6yXyXG/image-b8cbf6.png' }, 
+        {
+            caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n` +
+                     `👤 **User:** ${user.name}\n` +
+                     `💰 **Starting Balance:** \`0 Points\`\n\n` +
+                     `Invite friends to earn points and start farming!`,
+            parse_mode: 'Markdown',
+            ...mainMenu
+        }
     );
 });
 
@@ -105,18 +124,22 @@ bot.hears('⚙️ Account', (ctx) => {
 });
 
 bot.hears('🚸 My Referrals', (ctx) => {
-    const user = getDB(ctx); // Get updated name/points/stats
+    const user = getDB(ctx); 
     const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
     
+    // Updated Math: Referrals * 1 (Since reward is now 1 point)
+    const totalEarned = (user.referrals || 0) * 1;
+
     const referralText = 
         `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 𝐀𝐅𝐅𝐈𝐋𝐈𝐀𝐓𝐄 𝐏𝐑𝐎𝐆𝐑𝐀𝐌** ✨\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
         `👥 **Total Referrals:** \`${user.referrals || 0} Users\`\n` +
-        `💰 **Total Earned:** \`${(user.referrals || 0) * 2} Points\`\n` +
+        `💰 **Total Earned:** \`${totalEarned} Points\`\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
-        `🎁 **Reward:** Earn \`2 Points\` per invite!\n\n` +
-        `🔗 **Your Unique Link:**\n\`${link}\`\n\n` +
-        `🚀 *Invite friends and grow your balance instantly!*`;
+        `🎁 **Reward:** Earn \`1 Point\` per invite!\n\n` +
+        `🔗 **Your Unique Link:**\n` +
+        `\`${link}\`\n\n` +
+        `🚀 *Invite friends and grow your balance from 0 to Hero!*`;
 
     ctx.replyWithMarkdown(referralText, 
         Markup.inlineKeyboard([
@@ -393,6 +416,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
