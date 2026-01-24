@@ -29,17 +29,16 @@ const CHANNELS = ['@Hayre37', '@Digital_Claim', '@BIgsew_community', '@hayrefx']
 
 // --- KEYBOARDS ---
 const getMenu = (ctx) => {
-    // Basic buttons for everyone
     let buttons = [
         ['➕ Register New Gmail'],
         ['⚙️ Account', '🚸 My Referrals'],
         ['🏥 Help']
     ];
-    // ONLY add the Admin Panel button if the ID matches yours
     if (ctx.from.id === ADMIN_ID) {
         buttons.push(['🛠 Admin Panel']);
     }
     return Markup.keyboard(buttons).resize();
+};
 };
 
 const adminKeyboard = Markup.keyboard([
@@ -364,6 +363,7 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
