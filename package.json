@@ -1,12 +1,32 @@
 {
-  "name": " createUnlimitedGmail Bott",
+  "name": "createUnlimitedGmail-bot",
   "version": "1.1.0",
   "description": "Premium Gmail Registration Bot",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "bot": "node bot.js",
+    "bot:dev": "nodemon bot.js"
   },
+  "keywords": [
+    "telegram",
+    "bot",
+    "gmail",
+    "registration",
+    "premium"
+  ],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "telegraf": "^4.16.3"
+    "telegraf": "^4.16.3",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
