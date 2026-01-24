@@ -148,14 +148,98 @@ bot.start(checkJoin, async (ctx) => {
     );
 });
 
+// --- DYNAMIC LOADER ANIMATION ---
+const animateLoader = async (ctx, duration = 10000) => {
+    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    const steps = [
+        { emoji: '🔍', text: 'Checking account balance...', progress: 10 },
+        { emoji: '⚙️', text: 'Validating registration tier...', progress: 25 },
+        { emoji: '🛡️', text: 'Security verification...', progress: 40 },
+        { emoji: '📡', text: 'Connecting to Gmail servers...', progress: 55 },
+        { emoji: '🔐', text: 'Encrypting credentials...', progress: 70 },
+        { emoji: '✨', text: 'Initializing registration module...', progress: 85 },
+        { emoji: '🚀', text: 'Finalizing setup...', progress: 100 }
+    ];
+
+    const msg = await ctx.replyWithMarkdown(
+        `🌟 *PREMIUM REGISTRATION INITIALIZING* 🌟\n\n` +
+        `${frames[0]} Loading...\n\n` +
+        `Progress: ${'█'.repeat(0)}░░░░░░░░░░ 0%\n\n` +
+        `*Status:* Preparing system...`
+    );
+
+    let frameIdx = 0;
+    let stepIdx = 0;
+    const startTime = Date.now();
+    
+    return new Promise(async (resolve) => {
+        const interval = setInterval(async () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(100, Math.floor((elapsed / duration) * 100));
+            
+            // Update step based on progress
+            stepIdx = Math.floor((progress / 100) * steps.length);
+            if (stepIdx >= steps.length) stepIdx = steps.length - 1;
+            
+            const currentStep = steps[stepIdx];
+            const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+            
+            try {
+                await ctx.telegram.editMessageText(
+                    ctx.chat.id,
+                    msg.message_id,
+                    null,
+                    `🌟 *PREMIUM REGISTRATION INITIALIZING* 🌟\n\n` +
+                    `${frames[frameIdx % frames.length]} ${currentStep.text}\n\n` +
+                    `Progress: ${progressBar} ${progress}%\n\n` +
+                    `━━━━━━━━━━━━━━━━━━\n` +
+                    `${currentStep.emoji} *Tier:* Premium Plus\n` +
+                    `💎 *Status:* Active Processing`,
+                    { parse_mode: 'Markdown' }
+                );
+            } catch (e) {}
+            
+            frameIdx++;
+            
+            if (elapsed >= duration) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 300);
+    });
+};
+
 // --- MAIN MENU HANDLERS ---
 bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
     const user = getDB(ctx);
     if (user.points < 5) {
-        return ctx.replyWithMarkdown(`⚠️ *Insufficient Balance*\n\nYou need **5 Points** to register.\n*Current Balance:* ${user.points} pts`, getMenu(ctx));
+        return ctx.replyWithMarkdown(
+            `⚠️ *INSUFFICIENT BALANCE*\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `💎 Required Points: **5 pts**\n` +
+            `💰 Your Balance: **${user.points} pts**\n` +
+            `📊 Shortfall: **${5 - user.points} pts**\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `💡 *Ways to Earn Points:*\n` +
+            `🚸 Invite friends: +1 pt per join\n` +
+            `🎁 Daily rewards: Check back tomorrow!`,
+            getMenu(ctx)
+        );
     }
+    
+    // Run the beautiful loading animation
+    await animateLoader(ctx, 10000);
+    
+    // After loading completes, show the email prompt
     ctx.session.step = 'EMAIL';
-    ctx.replyWithMarkdown("📧 **Please send the Gmail Address**\n\n_Example: name@gmail.com_", cancelKeyboard);
+    ctx.replyWithMarkdown(
+        `✅ *REGISTRATION READY*\n\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `📧 **Please send the Gmail Address**\n\n` +
+        `_Example:_ \`name@gmail.com\`\n\n` +
+        `⏱️ This will cost **5 Points** from your balance.`,
+        cancelKeyboard
+    );
 });
 
 bot.hears('⚙️ Account', (ctx) => {
@@ -367,4 +451,3 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
-
