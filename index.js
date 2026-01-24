@@ -78,14 +78,14 @@ bot.start(async (ctx) => {
         if (referrer) {
             referrer.points += 1; 
             referrer.referrals += 1;
-            bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user joined! You earned +1 Point.`, { parse_mode: 'Markdown' }).catch(()=>{});
+            bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user earned +1 Point.`).catch(()=>{});
         }
     }
 
     await ctx.replyWithPhoto(
-        { source: 'welcome.png' }, // Points to the local file in your folder
+        { url: 'https://i.ibb.co/v6yXyXG/image-b8cbf6.png' }, 
         {
-            caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points and start farming!`,
+            caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
             parse_mode: 'Markdown',
             ...mainMenu
         }
@@ -315,6 +315,7 @@ bot.action('refresh_ref', (ctx) => {
 bot.action('verify', (ctx) => ctx.reply("Verification updated. Please send /start."));
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
