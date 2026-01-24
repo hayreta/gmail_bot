@@ -114,6 +114,37 @@ bot.hears('🚸 My Referrals', (ctx) => {
     ctx.replyWithMarkdown(`✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n━━━━━━━━━━━━━━━━━━\n👤 **User:** ${user.name}\n👥 **Total Referrals:** \`${user.referrals || 0}\`\n💰 **Total Earned:** \`${totalEarned} Points\`\n━━━━━━━━━━━━━━━━━━\n🎁 **Reward:** \`1 Point\` per join!\n\n🔗 **Your Unique Link:**\n\`${link}\``, 
         Markup.inlineKeyboard([[Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],[Markup.button.callback("📊 Refresh Stats", "refresh_ref")]]));
 });
+// --- HELP MESSAGE HANDLER WITH AUTO-CLEANUP ---
+
+bot.hears('🏥 Help', async (ctx) => {
+    const helpText = 
+        `✅ **Registration:**\n\n` +
+        `🧢 **Allowed number of :**\n` +
+        `The robot does not have any limitations on creating accounts using new methods and multiple servers. You can create as many Gmail accounts as you want. However, to prevent your Gmail accounts from being banned, it is recommended to create 5 to 10 accounts per hour using the robot.\n\n` +
+        `🛍️ **My referrals:**\n\n` +
+        `☔ The number of your referrals is updated every 24 hours, and the robot uses artificial intelligence to identify fake users and does not count them.`;
+
+    // Send the message and save its ID to the session for later deletion
+    const sentMsg = await ctx.replyWithMarkdown(helpText, mainMenu);
+    ctx.session.lastHelpMsgId = sentMsg.message_id;
+});
+
+// --- MIDDLEWARE TO DELETE HELP MESSAGE ON NEXT ACTION ---
+
+bot.use(async (ctx, next) => {
+    // If there is a saved Help Message ID and the user just sent a new command
+    if (ctx.session?.lastHelpMsgId && ctx.message?.text !== '🏥 Help') {
+        try {
+            await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.lastHelpMsgId);
+            ctx.session.lastHelpMsgId = null; // Clear from memory after deleting
+        } catch (err) {
+            // Silently fail if message was already deleted or is too old
+        }
+    }
+    return next();
+});
+
+
 
 bot.hears('🛠 Admin Panel', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ This area is restricted to Developers.");
@@ -269,3 +300,4 @@ bot.action('refresh_ref', (ctx) => {
 bot.action('verify', (ctx) => ctx.reply("Verification updated. Please send /start."));
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
