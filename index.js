@@ -83,7 +83,8 @@ bot.start(async (ctx) => {
     }
 
     await ctx.replyWithPhoto(
-       { source: 'welcome.png' },        {
+        { source: 'welcome.png' }, // Points to the local file in your folder
+        {
             caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points and start farming!`,
             parse_mode: 'Markdown',
             ...mainMenu
@@ -314,6 +315,7 @@ bot.action('refresh_ref', (ctx) => {
 bot.action('verify', (ctx) => ctx.reply("Verification updated. Please send /start."));
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
