@@ -127,28 +127,27 @@ bot.hears('🚸 My Referrals', (ctx) => {
     const user = getDB(ctx); 
     const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
     
-    // Updated Math: Referrals * 1 (Since reward is now 1 point)
+    // Reward is 1 Point per user
     const totalEarned = (user.referrals || 0) * 1;
 
     const referralText = 
-        `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 𝐀𝐅𝐅𝐈𝐋𝐈𝐀𝐓𝐄 𝐏𝐑𝐎𝐆𝐑𝐀𝐌** ✨\n` +
+        `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
-        `👥 **Total Referrals:** \`${user.referrals || 0} Users\`\n` +
+        `👤 **User:** ${user.name} [${user.username}]\n` +
+        `👥 **Total Referrals:** \`${user.referrals || 0}\`\n` +
         `💰 **Total Earned:** \`${totalEarned} Points\`\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
-        `🎁 **Reward:** Earn \`1 Point\` per invite!\n\n` +
-        `🔗 **Your Unique Link:**\n` +
-        `\`${link}\`\n\n` +
-        `🚀 *Invite friends and grow your balance from 0 to Hero!*`;
+        `🎁 **Reward:** \`1 Point\` per join!\n\n` +
+        `🔗 **Your Unique Link:**\n\`${link}\`\n\n` +
+        `🚀 *Grow your balance to start farming!*`;
 
     ctx.replyWithMarkdown(referralText, 
         Markup.inlineKeyboard([
-            [Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Join 𝕏-𝐇𝐮𝐧𝐭𝐞𝐫 and start farming Gmails today!")}`)],
+            [Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],
             [Markup.button.callback("📊 Refresh Stats", "refresh_ref")]
         ])
     );
 });
-
 // --- ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ ADMIN PANEL HANDLERS ---
 
 bot.hears('🛠 Admin Panel', (ctx) => {
@@ -216,34 +215,36 @@ bot.action(/view_prof:(.+)/, async (ctx) => {
     const targetId = ctx.match[1];
     const u = db[targetId];
 
-    if (!u) return ctx.answerCbQuery("❌ User not found.");
+    if (!u) return ctx.answerCbQuery("❌ User data not found.");
 
-    // Format: 👤 User: Name [@Username]
-    const userDisplay = `${u.name} [${u.username}]`;
+    // Format matches your image: 👤 User: Name [@Username]
+    const userHeader = `👤 **User:** ${u.name} [${u.username}]`;
 
     const profileText = 
         `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER INTELLIGENCE** ✨\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
-        `👤 **User:** ${userDisplay}\n` + 
+        `${userHeader}\n` + 
         `🆔 **User ID:** \`${targetId}\`\n` +
         `💰 **Balance:** \`${u.points} Points\`\n` +
         `🚸 **Invites:** \`${u.referrals} Users\`\n` +
-        `📊 **Gmails:** \`${u.registered} Accounts\`\n` +
         `📅 **Joined:** \`${u.joined.toLocaleDateString()}\`\n` +
         `━━━━━━━━━━━━━━━━━━\n` +
-        `⚡ *Quick Admin Actions:*`;
+        `⚡ *Admin Command Center*`;
 
-    await ctx.editMessageText(profileText, {
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([
-            [
-                Markup.button.callback("➕ Add Points", `quick_add:${targetId}`),
-                Markup.button.callback("➖ Rem Points", `quick_rem:${targetId}`)
-            ],
-            [Markup.button.callback("⬅️ Back to Directory", "list_users_back")]
-        ])
-    });
-    
+    try {
+        await ctx.editMessageText(profileText, {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+                [
+                    Markup.button.callback("➕ Add Points", `quick_add:${targetId}`),
+                    Markup.button.callback("➖ Rem Points", `quick_rem:${targetId}`)
+                ],
+                [Markup.button.callback("⬅️ Back to Directory", "list_users_back")]
+            ])
+        });
+    } catch (e) {
+        console.error("Profile view error:", e);
+    }
     await ctx.answerCbQuery();
 });
 
@@ -416,6 +417,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
