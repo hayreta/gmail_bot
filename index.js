@@ -28,14 +28,14 @@ const getDB = (ctx) => {
 const CHANNELS = ['@Hayre37', '@Digital_Claim', '@BIgsew_community', '@hayrefx'];
 
 // --- KEYBOARDS ---
-// Function to generate the menu dynamically
 const getMenu = (ctx) => {
-    const buttons = [
+    // Basic buttons for everyone
+    let buttons = [
         ['➕ Register New Gmail'],
         ['⚙️ Account', '🚸 My Referrals'],
         ['🏥 Help']
     ];
-    // Check against your ADMIN_ID constant
+    // ONLY add the Admin Panel button if the ID matches yours
     if (ctx.from.id === ADMIN_ID) {
         buttons.push(['🛠 Admin Panel']);
     }
@@ -119,32 +119,27 @@ bot.action('verify_and_delete', async (ctx) => {
 });
 //Command
 bot.start(checkJoin, async (ctx) => {
-    // 1. Get user from your new persistent DB
-    const user = getDB(ctx); 
+    const user = getDB(ctx);
     const refId = ctx.payload;
 
-    // 2. Referral Logic (Only if they are new)
+    // Referral Logic
     if (refId && refId != ctx.from.id && !user.referredBy) {
         user.referredBy = refId;
         const referrer = getDB(refId); 
         if (referrer) {
             referrer.points += 1; 
             referrer.referrals += 1;
-            // Notify the referrer - using your fix to ensure they exist in DB
-            bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user joined! You earned +1 Point.`, { parse_mode: 'Markdown' }).catch(()=>{});
+            bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user earned +1 Point.`).catch(()=>{});
         }
     }
 
-    // 3. Beautiful Welcome with Restored Image
+    // IMAGE RESTORED FOR START COMMAND WITH DYNAMIC MENU
     await ctx.replyWithPhoto(
         { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' }, 
         {
-            caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n` +
-                     `👤 **User:** ${user.name}\n` +
-                     `💰 **Points:** \`${user.points}\`\n\n` +
-                     `Invite friends to earn points and start farming!`,
+            caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
             parse_mode: 'Markdown',
-            ...getMenu(ctx) // Admin panel only shows for you
+            ...getMenu(ctx) // <--- This dynamically hides/shows the Admin button
         }
     );
 });
