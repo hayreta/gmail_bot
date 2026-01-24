@@ -43,38 +43,58 @@ const adminKeyboard = Markup.keyboard([
 const cancelKeyboard = Markup.keyboard([['❌ Cancel Operation']]).resize();
 
 // --- MIDDLEWARE: FORCE JOIN CHECK ---
-
+// --- MIDDLEWARE: FORCE JOIN CHECK (TEXT-ONLY & AUTO-CLEANUP) ---
 async function checkJoin(ctx, next) {
     if (ctx.from.id === ADMIN_ID) return next(); 
     
-    let notJoined = [];
+    let joinedAll = true;
     for (const chan of CHANNELS) {
         try {
             const member = await ctx.telegram.getChatMember(chan, ctx.from.id);
             if (['left', 'kicked'].includes(member.status)) {
-                notJoined.push(chan);
+                joinedAll = false;
+                break;
             }
-        } catch (e) { 
-            // If channel is private or bot isn't admin, skip it
-            continue; 
-        }
+        } catch (e) { continue; }
     }
 
-    if (notJoined.length > 0) {
+    if (!joinedAll) {
         return ctx.replyWithMarkdown(
             `⛔️ **ACCESS DENIED**\n\n` +
-            `You must join our official channels to use this bot's premium features. ` +
-            `Once you join, simply press any button to continue!`,
+            `You must join our official channels to use this bot's premium features.`,
             Markup.inlineKeyboard([
                 [Markup.button.url("Channel 1", "https://t.me/Hayre37"), Markup.button.url("Channel 2", "https://t.me/Digital_Claim")],
-                [Markup.button.url("Channel 3", "https://t.me/BIgsew_community"), Markup.button.url("Channel 4", "https://t.me/hayrefx")]
+                [Markup.button.url("Channel 3", "https://t.me/BIgsew_community"), Markup.button.url("Channel 4", "https://t.me/hayrefx")],
+                [Markup.button.callback("Verify Membership ✅", "verify_and_delete")]
             ])
         );
     }
-
-    // If they are in all channels, they pass automatically to the next function
     return next();
 }
+
+// --- CALLBACK: VERIFY AND DELETE ---
+bot.action('verify_and_delete', async (ctx) => {
+    let joinedAll = true;
+    for (const chan of CHANNELS) {
+        try {
+            const member = await ctx.telegram.getChatMember(chan, ctx.from.id);
+            if (['left', 'kicked'].includes(member.status)) {
+                joinedAll = false;
+                break;
+            }
+        } catch (e) { continue; }
+    }
+
+    if (joinedAll) {
+        try {
+            await ctx.deleteMessage(); // Deletes the "Access Denied" message
+        } catch (e) {}
+        await ctx.answerCbQuery("Success! You can now use the bot. ✅");
+        await ctx.reply("Verification successful! Please select an option from the menu.", mainMenu);
+    } else {
+        await ctx.answerCbQuery("❌ You still haven't joined all channels!", { show_alert: true });
+    }
+});
 
 // --- COMMANDS ---
 bot.start(async (ctx) => {
@@ -321,9 +341,8 @@ bot.action('refresh_ref', (ctx) => {
     ctx.answerCbQuery(`Stats Updated! Points: ${user.points}`);
 });
 
-bot.action('verify', (ctx) => ctx.reply("Verification updated. Please send /start."));
-
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
