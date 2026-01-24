@@ -2,13 +2,11 @@
   "name": "createUnlimitedGmail-bot",
   "version": "1.1.0",
   "description": "Premium Gmail Registration Bot",
-  "main": "index.js",
+  "main": "bot.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "bot": "node bot.js",
-    "bot:dev": "nodemon bot.js"
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
   },
   "keywords": [
     "telegram",
@@ -19,28 +17,14 @@
   ],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "telegraf": "^4.16.3",
-    "dotenv": "^16.4.5",
-    "next": "16.1.4",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "class-variance-authority": "0.7.1",
-    "clsx": "2.1.1",
-    "lucide-react": "0.563.0",
-    "tailwind-merge": "3.4.0",
-    "tailwindcss-animate": "1.0.7"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0",
-    "@types/react": "19.2.9",
-    "@types/react-dom": "19.2.3",
-    "@types/node": "25.0.10",
-    "typescript": "5.9.3",
-    "tailwindcss": "4.1.18",
-    "postcss": "8.5.6"
-  },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "telegraf": "^4.16.3",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
   }
 }
