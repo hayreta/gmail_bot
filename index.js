@@ -116,34 +116,42 @@ bot.hears('🚸 My Referrals', (ctx) => {
 });
 // --- HELP MESSAGE HANDLER WITH AUTO-CLEANUP ---
 
-bot.hears('🏥 Help', async (ctx) => {
-    const helpText = 
-        `✅ **Registration:**\n\n` +
-        `🧢 **Allowed number of :**\n` +
-        `The robot does not have any limitations on creating accounts using new methods and multiple servers. You can create as many Gmail accounts as you want. However, to prevent your Gmail accounts from being banned, it is recommended to create 5 to 10 accounts per hour using the robot.\n\n` +
-        `🛍️ **My referrals:**\n\n` +
-        `☔ The number of your referrals is updated every 24 hours, and the robot uses artificial intelligence to identify fake users and does not count them.`;
+// --- HELP MESSAGE HANDLER ---
 
-    // Send the message and save its ID to the session for later deletion
-    const sentMsg = await ctx.replyWithMarkdown(helpText, mainMenu);
-    ctx.session.lastHelpMsgId = sentMsg.message_id;
+bot.hears('🏥 Help', async (ctx) => {
+    const helpMessage = 
+        `🌟 **Account Registration System** 🌟\n\n` +
+        `✅ **Registration Access**\n\n` +
+        `🧢 **Allowed Limit:**\n\n` +
+        `🤖 The robot has no restrictions on creating accounts using new methods and multiple servers.\n\n` +
+        `You can create unlimited Gmail accounts with full automation.\n\n` +
+        `⚠️ For safety and long-term stability, we recommend creating 5–10 accounts per hour to avoid bans and security flags.\n\n` +
+        `🛍️ **My Referrals System**\n` +
+        `☔ **Referral Tracking:**\n\n` +
+        `📊 Your referral count is updated every 24 hours.\n\n` +
+        `🧠 The system uses AI detection to identify fake or inactive users, and they are automatically excluded from the count.\n\n` +
+        `✅ Only real, valid users are recorded and rewarded.`;
+
+    const sentMsg = await ctx.replyWithMarkdown(helpMessage, mainMenu);
+    
+    // Save the ID so we can delete it when the user clicks something else
+    if (!ctx.session) ctx.session = {};
+    ctx.session.helpMsgId = sentMsg.message_id;
 });
 
-// --- MIDDLEWARE TO DELETE HELP MESSAGE ON NEXT ACTION ---
-
+// --- AUTO-DELETE MIDDLEWARE ---
+// This runs before every other command to clean up the help message
 bot.use(async (ctx, next) => {
-    // If there is a saved Help Message ID and the user just sent a new command
-    if (ctx.session?.lastHelpMsgId && ctx.message?.text !== '🏥 Help') {
+    if (ctx.session?.helpMsgId && ctx.message?.text !== '🏥 Help') {
         try {
-            await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.lastHelpMsgId);
-            ctx.session.lastHelpMsgId = null; // Clear from memory after deleting
-        } catch (err) {
-            // Silently fail if message was already deleted or is too old
+            await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.helpMsgId);
+            ctx.session.helpMsgId = null;
+        } catch (e) {
+            // Message might already be deleted
         }
     }
     return next();
 });
-
 
 
 bot.hears('🛠 Admin Panel', (ctx) => {
@@ -300,4 +308,5 @@ bot.action('refresh_ref', (ctx) => {
 bot.action('verify', (ctx) => ctx.reply("Verification updated. Please send /start."));
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
