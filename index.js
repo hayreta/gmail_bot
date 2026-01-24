@@ -43,27 +43,36 @@ const adminKeyboard = Markup.keyboard([
 const cancelKeyboard = Markup.keyboard([['❌ Cancel Operation']]).resize();
 
 // --- MIDDLEWARE: FORCE JOIN CHECK ---
+
 async function checkJoin(ctx, next) {
     if (ctx.from.id === ADMIN_ID) return next(); 
+    
+    let notJoined = [];
     for (const chan of CHANNELS) {
         try {
             const member = await ctx.telegram.getChatMember(chan, ctx.from.id);
             if (['left', 'kicked'].includes(member.status)) {
-                return ctx.replyWithPhoto(
-                    { url: 'https://t.me/Unlimited_GmailA/2888' },
-                    {
-                        caption: "⛔️ **ACCESS DENIED**\n\nYou must join our official channels to use this bot's premium features.",
-                        parse_mode: 'Markdown',
-                        ...Markup.inlineKeyboard([
-                            [Markup.button.url("Channel 1", "https://t.me/Hayre37"), Markup.button.url("Channel 2", "https://t.me/Digital_Claim")],
-                            [Markup.button.url("Channel 3", "https://t.me/BIgsew_community"), Markup.button.url("Channel 4", "https://t.me/hayrefx")],
-                            [Markup.button.callback("Verify Membership ✅", "verify")]
-                        ])
-                    }
-                );
+                notJoined.push(chan);
             }
-        } catch (e) { continue; }
+        } catch (e) { 
+            // If channel is private or bot isn't admin, skip it
+            continue; 
+        }
     }
+
+    if (notJoined.length > 0) {
+        return ctx.replyWithMarkdown(
+            `⛔️ **ACCESS DENIED**\n\n` +
+            `You must join our official channels to use this bot's premium features. ` +
+            `Once you join, simply press any button to continue!`,
+            Markup.inlineKeyboard([
+                [Markup.button.url("Channel 1", "https://t.me/Hayre37"), Markup.button.url("Channel 2", "https://t.me/Digital_Claim")],
+                [Markup.button.url("Channel 3", "https://t.me/BIgsew_community"), Markup.button.url("Channel 4", "https://t.me/hayrefx")]
+            ])
+        );
+    }
+
+    // If they are in all channels, they pass automatically to the next function
     return next();
 }
 
@@ -315,6 +324,7 @@ bot.action('refresh_ref', (ctx) => {
 bot.action('verify', (ctx) => ctx.reply("Verification updated. Please send /start."));
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
