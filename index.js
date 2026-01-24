@@ -28,11 +28,19 @@ const getDB = (ctx) => {
 const CHANNELS = ['@Hayre37', '@Digital_Claim', '@BIgsew_community', '@hayrefx'];
 
 // --- KEYBOARDS ---
-const mainMenu = Markup.keyboard([
-    ['➕ Register New Gmail'],
-    ['⚙️ Account', '🚸 My Referrals'],
-    ['🏥 Help', '🛠 Admin Panel']
-]).resize();
+const getMenu = (ctx) => {
+    // Basic buttons for everyone
+    let buttons = [
+        ['➕ Register New Gmail'],
+        ['⚙️ Account', '🚸 My Referrals'],
+        ['🏥 Help']
+    ];
+    // ONLY add the Admin Panel button if the ID matches yours
+    if (ctx.from.id === ADMIN_ID) {
+        buttons.push(['🛠 Admin Panel']);
+    }
+    return Markup.keyboard(buttons).resize();
+};
 
 const adminKeyboard = Markup.keyboard([
     ['📊 Global Stats', '📢 Broadcast'],
@@ -42,7 +50,6 @@ const adminKeyboard = Markup.keyboard([
 
 const cancelKeyboard = Markup.keyboard([['❌ Cancel Operation']]).resize();
 
-// --- MIDDLEWARE: FORCE JOIN CHECK ---
 // --- MIDDLEWARE: FORCE JOIN CHECK ---
 async function checkJoin(ctx, next) {
     if (ctx.from.id === ADMIN_ID) return next(); 
@@ -110,9 +117,7 @@ bot.action('verify_and_delete', async (ctx) => {
         await ctx.answerCbQuery("❌ You still haven't joined all channels!", { show_alert: true });
     }
 });
-
-// --- COMMANDS ---
-
+//Command
 bot.start(checkJoin, async (ctx) => {
     const user = getDB(ctx);
     const refId = ctx.payload;
@@ -127,13 +132,14 @@ bot.start(checkJoin, async (ctx) => {
             bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user earned +1 Point.`).catch(()=>{});
         }
     }
-    // IMAGE RESTORED FOR START COMMAND
+
+    // IMAGE RESTORED FOR START COMMAND WITH DYNAMIC MENU
     await ctx.replyWithPhoto(
         { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' }, 
         {
             caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
             parse_mode: 'Markdown',
-            ...mainMenu
+            ...getMenu(ctx) // <--- This dynamically hides/shows the Admin button
         }
     );
 });
@@ -358,6 +364,7 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
