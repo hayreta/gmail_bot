@@ -117,7 +117,7 @@ bot.hears('🚸 My Referrals', (ctx) => {
 // --- HELP MESSAGE HANDLER WITH AUTO-CLEANUP ---
 
 // --- HELP MESSAGE HANDLER ---
-
+// --- 1. THE HELP COMMAND ---
 bot.hears('🏥 Help', async (ctx) => {
     const helpMessage = 
         `🌟 **Account Registration System** 🌟\n\n` +
@@ -132,27 +132,34 @@ bot.hears('🏥 Help', async (ctx) => {
         `🧠 The system uses AI detection to identify fake or inactive users, and they are automatically excluded from the count.\n\n` +
         `✅ Only real, valid users are recorded and rewarded.`;
 
-    const sentMsg = await ctx.replyWithMarkdown(helpMessage, mainMenu);
-    
-    // Save the ID so we can delete it when the user clicks something else
-    if (!ctx.session) ctx.session = {};
-    ctx.session.helpMsgId = sentMsg.message_id;
+    await ctx.replyWithMarkdown(helpMessage, 
+        Markup.inlineKeyboard([
+            [Markup.button.callback("🗑️ Mark as Read & Close", "close_help")]
+        ])
+    );
 });
 
-// --- AUTO-DELETE MIDDLEWARE ---
-// This runs before every other command to clean up the help message
-bot.use(async (ctx, next) => {
-    if (ctx.session?.helpMsgId && ctx.message?.text !== '🏥 Help') {
+// --- 2. THE DELETE ACTION ---
+bot.action('close_help', async (ctx) => {
+    try {
+        await ctx.deleteMessage();
+        await ctx.answerCbQuery("Message marked as read ✅");
+    } catch (e) {
+        ctx.answerCbQuery("Already deleted.");
+    }
+});
+
+// --- 3. THE AUTO-CLEANUP (When any other menu button is pressed) ---
+bot.on('text', async (ctx, next) => {
+    // If the user clicks a menu button while a help message is active
+    if (ctx.session?.helpMsgId) {
         try {
             await ctx.telegram.deleteMessage(ctx.chat.id, ctx.session.helpMsgId);
             ctx.session.helpMsgId = null;
-        } catch (e) {
-            // Message might already be deleted
-        }
+        } catch (e) {}
     }
     return next();
 });
-
 
 bot.hears('🛠 Admin Panel', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ This area is restricted to Developers.");
@@ -308,5 +315,6 @@ bot.action('refresh_ref', (ctx) => {
 bot.action('verify', (ctx) => ctx.reply("Verification updated. Please send /start."));
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
