@@ -43,6 +43,7 @@ const adminKeyboard = Markup.keyboard([
 const cancelKeyboard = Markup.keyboard([['❌ Cancel Operation']]).resize();
 
 // --- MIDDLEWARE: FORCE JOIN CHECK ---
+// --- MIDDLEWARE: FORCE JOIN CHECK ---
 async function checkJoin(ctx, next) {
     if (ctx.from.id === ADMIN_ID) return next(); 
     
@@ -58,14 +59,18 @@ async function checkJoin(ctx, next) {
     }
 
     if (!joinedAll) {
-        return ctx.replyWithMarkdown(
-            `⛔️ **ACCESS DENIED**\n\n` +
-            `You must join our official channels to use this bot's premium features.`,
-            Markup.inlineKeyboard([
-                [Markup.button.url("Channel 1", "https://t.me/Hayre37"), Markup.button.url("Channel 2", "https://t.me/Digital_Claim")],
-                [Markup.button.url("Channel 3", "https://t.me/BIgsew_community"), Markup.button.url("Channel 4", "https://t.me/hayrefx")],
-                [Markup.button.callback("Verify Membership ✅", "verify_and_delete")]
-            ])
+        // IMAGE RESTORED FOR ACCESS DENIED
+        return ctx.replyWithPhoto(
+            { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' },
+            {
+                caption: `⛔️ **ACCESS DENIED**\n\nYou must join our official channels to use this bot's premium features.`,
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.url("Channel 1", "https://t.me/Hayre37"), Markup.button.url("Channel 2", "https://t.me/Digital_Claim")],
+                    [Markup.button.url("Channel 3", "https://t.me/BIgsew_community"), Markup.button.url("Channel 4", "https://t.me/hayrefx")],
+                    [Markup.button.callback("Verify Membership ✅", "verify_and_delete")]
+                ])
+            }
         );
     }
     return next();
@@ -92,13 +97,14 @@ bot.action('verify_and_delete', async (ctx) => {
         const user = getDB(ctx);
         await ctx.answerCbQuery("Success! Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ ✅");
         
-        // After deleting, send the Welcome Message and Main Menu
-        await ctx.replyWithMarkdown(
-            `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n` +
-            `👤 **User:** ${user.name}\n` +
-            `💰 **Starting Balance:** \`0 Points\`\n\n` +
-            `Invite friends to earn points!`,
-            mainMenu
+        // IMAGE RESTORED FOR SUCCESS MESSAGE
+        await ctx.replyWithPhoto(
+            { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' },
+            {
+                caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
+                parse_mode: 'Markdown',
+                ...mainMenu
+            }
         );
     } else {
         await ctx.answerCbQuery("❌ You still haven't joined all channels!", { show_alert: true });
@@ -107,7 +113,6 @@ bot.action('verify_and_delete', async (ctx) => {
 
 // --- COMMANDS ---
 
-// Added checkJoin here so /start triggers the join check first
 bot.start(checkJoin, async (ctx) => {
     const user = getDB(ctx);
     const refId = ctx.payload;
@@ -122,14 +127,14 @@ bot.start(checkJoin, async (ctx) => {
             bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user earned +1 Point.`).catch(()=>{});
         }
     }
-
-    // Text-only Welcome (No Image as requested)
-    await ctx.replyWithMarkdown(
-        `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n` +
-        `👤 **User:** ${user.name}\n` +
-        `💰 **Starting Balance:** \`0 Points\`\n\n` +
-        `Invite friends to earn points!`,
-        mainMenu
+    // IMAGE RESTORED FOR START COMMAND
+    await ctx.replyWithPhoto(
+        { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' }, 
+        {
+            caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
+            parse_mode: 'Markdown',
+            ...mainMenu
+        }
     );
 });
 // --- MAIN MENU HANDLERS ---
@@ -353,6 +358,7 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
