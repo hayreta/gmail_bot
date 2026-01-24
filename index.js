@@ -105,10 +105,24 @@ bot.hears('⚙️ Account', (ctx) => {
 });
 
 bot.hears('🚸 My Referrals', (ctx) => {
+    const user = getDB(ctx); // Get updated name/points/stats
     const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
-    ctx.replyWithMarkdown(
-        `📢 *Referral Program*\n\nEarn **2 Points** for every friend you invite!\n\n🔗 *Your Link:* \`${link}\``,
-        Markup.inlineKeyboard([[Markup.button.url("Share With Friends 🚀", `https://t.me/share/url?url=${link}`)]])
+    
+    const referralText = 
+        `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 𝐀𝐅𝐅𝐈𝐋𝐈𝐀𝐓𝐄 𝐏𝐑𝐎𝐆𝐑𝐀𝐌** ✨\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `👥 **Total Referrals:** \`${user.referrals || 0} Users\`\n` +
+        `💰 **Total Earned:** \`${(user.referrals || 0) * 2} Points\`\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `🎁 **Reward:** Earn \`2 Points\` per invite!\n\n` +
+        `🔗 **Your Unique Link:**\n\`${link}\`\n\n` +
+        `🚀 *Invite friends and grow your balance instantly!*`;
+
+    ctx.replyWithMarkdown(referralText, 
+        Markup.inlineKeyboard([
+            [Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Join 𝕏-𝐇𝐮𝐧𝐭𝐞𝐫 and start farming Gmails today!")}`)],
+            [Markup.button.callback("📊 Refresh Stats", "refresh_ref")]
+        ])
     );
 });
 
@@ -350,6 +364,28 @@ bot.action(/quick_rem:(.+)/, (ctx) => {
 
     return next();
 });
+// This handles the "Refresh" button click
+bot.action('refresh_ref', (ctx) => {
+    const user = getDB(ctx);
+    const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
+    
+    // We use editMessageText for a smooth, no-flicker update
+    ctx.editMessageText(
+        `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 𝐀𝐅𝐅𝐈𝐋𝐈𝐀𝐓𝐄 𝐏𝐑𝐎𝐆𝐑𝐀𝐌** ✨\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `👥 **Total Referrals:** \`${user.referrals || 0} Users\`\n` +
+        `💰 **Total Earned:** \`${(user.referrals || 0) * 2} Points\`\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `🔗 **Your Unique Link:**\n\`${link}\``,
+        { 
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+                [Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${link}`)],
+                [Markup.button.callback("✅ Stats Updated", "refresh_ref")]
+            ])
+        }
+    ).catch(() => ctx.answerCbQuery("Stats already up to date!"));
+});
 // --- CALLBACK HANDLERS ---
 bot.action('verify', async (ctx) => {
     await ctx.answerCbQuery("Checking...");
@@ -357,6 +393,7 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
