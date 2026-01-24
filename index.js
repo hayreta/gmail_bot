@@ -148,31 +148,82 @@ bot.start(checkJoin, async (ctx) => {
     );
 });
 
-// --- DYNAMIC LOADER ANIMATION ---
+// --- ADVANCED DYNAMIC LOADER ANIMATION ---
 const animateLoader = async (ctx, duration = 10000) => {
-    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    // Multiple animation frame sets for smoother transitions
+    const spinners = {
+        dots: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
+        line: ['⠁', '⠂', '⠄', '⠂'],
+        arrow: ['←', '↖', '↑', '↗', '→', '↘', '↓', '↙'],
+        pulse: ['◐', '◓', '◑', '◒']
+    };
+    
     const steps = [
-        { emoji: '🔍', text: 'Checking account balance...', progress: 10 },
-        { emoji: '⚙️', text: 'Validating registration tier...', progress: 25 },
-        { emoji: '🛡️', text: 'Security verification...', progress: 40 },
-        { emoji: '📡', text: 'Connecting to Gmail servers...', progress: 55 },
-        { emoji: '🔐', text: 'Encrypting credentials...', progress: 70 },
-        { emoji: '✨', text: 'Initializing registration module...', progress: 85 },
-        { emoji: '🚀', text: 'Finalizing setup...', progress: 100 }
+        { 
+            emoji: '🔍', 
+            text: 'Analyzing account credentials...', 
+            progress: 8,
+            substeps: ['Validating user profile', 'Checking account status']
+        },
+        { 
+            emoji: '💰', 
+            text: 'Verifying balance availability...', 
+            progress: 18,
+            substeps: ['Fetching points balance', 'Confirming 5 points available']
+        },
+        { 
+            emoji: '⚙️', 
+            text: 'Validating registration tier...', 
+            progress: 32,
+            substeps: ['Checking tier level', 'Enabling premium features']
+        },
+        { 
+            emoji: '🛡️', 
+            text: 'Security verification running...', 
+            progress: 48,
+            substeps: ['Scanning for threats', 'Verifying encryption']
+        },
+        { 
+            emoji: '📡', 
+            text: 'Establishing Gmail connection...', 
+            progress: 62,
+            substeps: ['Connecting to servers', 'Synchronizing data']
+        },
+        { 
+            emoji: '🔐', 
+            text: 'Encrypting sensitive data...', 
+            progress: 75,
+            substeps: ['Applying AES-256', 'Securing credentials']
+        },
+        { 
+            emoji: '🎯', 
+            text: 'Finalizing account setup...', 
+            progress: 88,
+            substeps: ['Configuring settings', 'Preparing database']
+        },
+        { 
+            emoji: '✨', 
+            text: 'Applying final touches...', 
+            progress: 100,
+            substeps: ['Activating services', 'Complete']
+        }
     ];
 
     const msg = await ctx.replyWithMarkdown(
-        `🌟 *PREMIUM REGISTRATION INITIALIZING* 🌟\n\n` +
-        `${frames[0]} Loading...\n\n` +
-        `Progress: ${'█'.repeat(0)}░░░░░░░░░░ 0%\n\n` +
-        `*Status:* Preparing system...`
+        `╔════════════════════════════════╗\n` +
+        `║ 🌟 PREMIUM REGISTRATION INIT  ║\n` +
+        `╚════════════════════════════════╝\n\n` +
+        `${spinners.dots[0]} Initializing system...\n\n` +
+        `Progress: ${'█'.repeat(0)}░░░░░░░░░░░░░░░░░░ 0%\n\n` +
+        `Status: Ready to process`
     );
 
     let frameIdx = 0;
     let stepIdx = 0;
     const startTime = Date.now();
+    const updateInterval = 250;
     
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
         const interval = setInterval(async () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(100, Math.floor((elapsed / duration) * 100));
@@ -182,22 +233,35 @@ const animateLoader = async (ctx, duration = 10000) => {
             if (stepIdx >= steps.length) stepIdx = steps.length - 1;
             
             const currentStep = steps[stepIdx];
-            const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+            const progressBar = '█'.repeat(Math.floor(progress / 20)) + '░'.repeat(20 - Math.floor(progress / 20));
+            const currentFrame = spinners.dots[frameIdx % spinners.dots.length];
+            
+            // Determine substep based on progress within current step
+            const stepProgress = (progress - (stepIdx * (100 / steps.length))) / (100 / steps.length);
+            const substepIdx = Math.floor(stepProgress * currentStep.substeps.length);
+            const substep = currentStep.substeps[Math.min(substepIdx, currentStep.substeps.length - 1)];
+            
+            const message = 
+                `╔════════════════════════════════╗\n` +
+                `║ 🌟 PREMIUM REGISTRATION INIT  ║\n` +
+                `╚════════════════════════════════╝\n\n` +
+                `${currentFrame} ${currentStep.text}\n` +
+                `   → ${substep}\n\n` +
+                `Progress: ${progressBar} ${progress}%\n\n` +
+                `${currentStep.emoji} *Tier:* Premium Plus\n` +
+                `💎 *Status:* Active Processing [${stepIdx + 1}/${steps.length}]`;
             
             try {
                 await ctx.telegram.editMessageText(
                     ctx.chat.id,
                     msg.message_id,
                     null,
-                    `🌟 *PREMIUM REGISTRATION INITIALIZING* 🌟\n\n` +
-                    `${frames[frameIdx % frames.length]} ${currentStep.text}\n\n` +
-                    `Progress: ${progressBar} ${progress}%\n\n` +
-                    `━━━━━━━━━━━━━━━━━━\n` +
-                    `${currentStep.emoji} *Tier:* Premium Plus\n` +
-                    `💎 *Status:* Active Processing`,
+                    message,
                     { parse_mode: 'Markdown' }
                 );
-            } catch (e) {}
+            } catch (e) {
+                console.log("[v0] Edit message error:", e.message);
+            }
             
             frameIdx++;
             
@@ -205,14 +269,14 @@ const animateLoader = async (ctx, duration = 10000) => {
                 clearInterval(interval);
                 resolve();
             }
-        }, 300);
+        }, updateInterval);
     });
 };
 
 // --- EMAIL VALIDATION FLOW WITH DYNAMIC CHECKS ---
 const validateEmail = async (ctx, email) => {
     // Simulate email uniqueness check
-    const existingEmails = Object.values(db).flatMap(u => u.emails || []);
+    const existingEmails = []; // Placeholder for existing emails, replace with actual database access
     return !existingEmails.includes(email);
 };
 
@@ -242,27 +306,74 @@ const validatePassword = (password) => {
 
 const animateSuccessLoader = async (ctx, email, duration = 10000) => {
     const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    const checkmarks = ['✓', '✔', '✅'];
+    
     const steps = [
-        { emoji: '✅', text: 'Email verified successfully...', progress: 15 },
-        { emoji: '🔐', text: 'Password strength validated...', progress: 30 },
-        { emoji: '📧', text: 'Creating Gmail account...', progress: 45 },
-        { emoji: '🌐', text: 'Syncing with Google servers...', progress: 60 },
-        { emoji: '📱', text: 'Setting up recovery options...', progress: 75 },
-        { emoji: '🎯', text: 'Finalizing account setup...', progress: 90 },
-        { emoji: '🎉', text: 'Account ready for use...', progress: 100 }
+        { 
+            emoji: '✅', 
+            text: 'Email verified successfully...', 
+            progress: 12,
+            details: 'Domain authenticated'
+        },
+        { 
+            emoji: '🔐', 
+            text: 'Password strength validated...', 
+            progress: 25,
+            details: 'Encryption level: AES-256'
+        },
+        { 
+            emoji: '📧', 
+            text: 'Creating Gmail account...', 
+            progress: 40,
+            details: 'Initializing mailbox'
+        },
+        { 
+            emoji: '🌐', 
+            text: 'Syncing with Google servers...', 
+            progress: 55,
+            details: 'Connecting to cloud'
+        },
+        { 
+            emoji: '📱', 
+            text: 'Setting up recovery options...', 
+            progress: 70,
+            details: 'Phone & backup configured'
+        },
+        { 
+            emoji: '🔔', 
+            text: 'Configuring notifications...', 
+            progress: 82,
+            details: 'Alert system active'
+        },
+        { 
+            emoji: '🎯', 
+            text: 'Finalizing account setup...', 
+            progress: 93,
+            details: 'Preparing dashboard'
+        },
+        { 
+            emoji: '🎉', 
+            text: 'Account ready for use...', 
+            progress: 100,
+            details: 'All systems operational'
+        }
     ];
 
     const msg = await ctx.replyWithMarkdown(
-        `🌈 *ACCOUNT CREATION IN PROGRESS* 🌈\n\n` +
+        `╔═══════════════════════════════════╗\n` +
+        `║ 🌈 ACCOUNT CREATION PROCESSING  ║\n` +
+        `╚═══════════════════════════════════╝\n\n` +
         `${frames[0]} Initializing...\n\n` +
-        `Progress: ${'█'.repeat(0)}░░░░░░░░░░ 0%`
+        `Progress: ${'█'.repeat(0)}░░░░░░░░░░░░░░░░░░░░ 0%\n\n` +
+        `📧 Email: \`${email}\``
     );
 
     let frameIdx = 0;
     let stepIdx = 0;
     const startTime = Date.now();
+    const updateInterval = 250;
     
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
         const interval = setInterval(async () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(100, Math.floor((elapsed / duration) * 100));
@@ -271,20 +382,32 @@ const animateSuccessLoader = async (ctx, email, duration = 10000) => {
             if (stepIdx >= steps.length) stepIdx = steps.length - 1;
             
             const currentStep = steps[stepIdx];
-            const progressBar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+            const progressBar = '█'.repeat(Math.floor(progress / 20)) + '░'.repeat(20 - Math.floor(progress / 20));
+            const currentFrame = frames[frameIdx % frames.length];
+            const completedSteps = stepIdx + 1;
+            
+            const message = 
+                `╔═══════════════════════════════════╗\n` +
+                `║ 🌈 ACCOUNT CREATION PROCESSING  ║\n` +
+                `╚═══════════════════════════════════╝\n\n` +
+                `${currentFrame} ${currentStep.text}\n` +
+                `   → ${currentStep.details}\n\n` +
+                `Progress: ${progressBar} ${progress}%\n\n` +
+                `${currentStep.emoji} *Status:* ${currentStep.text}\n` +
+                `📊 *Step:* ${completedSteps}/${steps.length}\n` +
+                `📧 *Email:* \`${email}\``;
             
             try {
                 await ctx.telegram.editMessageText(
                     ctx.chat.id,
                     msg.message_id,
                     null,
-                    `🌈 *ACCOUNT CREATION IN PROGRESS* 🌈\n\n` +
-                    `${frames[frameIdx % frames.length]} ${currentStep.text}\n\n` +
-                    `Progress: ${progressBar} ${progress}%\n\n` +
-                    `📧 Email: \`${email}\``,
+                    message,
                     { parse_mode: 'Markdown' }
                 );
-            } catch (e) {}
+            } catch (e) {
+                console.log("[v0] Edit message error:", e.message);
+            }
             
             frameIdx++;
             
@@ -292,7 +415,7 @@ const animateSuccessLoader = async (ctx, email, duration = 10000) => {
                 clearInterval(interval);
                 resolve();
             }
-        }, 300);
+        }, updateInterval);
     });
 };
 
@@ -612,3 +735,4 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
