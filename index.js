@@ -83,7 +83,7 @@ bot.start(async (ctx) => {
     }
 
     await ctx.replyWithPhoto(
-        { url: 'https://i.ibb.co/v6yXyXG/image-b8cbf6.png' }, 
+        { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' }, 
         {
             caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
             parse_mode: 'Markdown',
