@@ -43,7 +43,6 @@ const adminKeyboard = Markup.keyboard([
 const cancelKeyboard = Markup.keyboard([['❌ Cancel Operation']]).resize();
 
 // --- MIDDLEWARE: FORCE JOIN CHECK ---
-// --- MIDDLEWARE: FORCE JOIN CHECK (TEXT-ONLY & AUTO-CLEANUP) ---
 async function checkJoin(ctx, next) {
     if (ctx.from.id === ADMIN_ID) return next(); 
     
@@ -87,20 +86,33 @@ bot.action('verify_and_delete', async (ctx) => {
 
     if (joinedAll) {
         try {
-            await ctx.deleteMessage(); // Deletes the "Access Denied" message
+            await ctx.deleteMessage(); 
         } catch (e) {}
-        await ctx.answerCbQuery("Success! You can now use the bot. ✅");
-        await ctx.reply("Verification successful! Please select an option from the menu.", mainMenu);
+        
+        const user = getDB(ctx);
+        await ctx.answerCbQuery("Success! Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ ✅");
+        
+        // After deleting, send the Welcome Message and Main Menu
+        await ctx.replyWithMarkdown(
+            `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n` +
+            `👤 **User:** ${user.name}\n` +
+            `💰 **Starting Balance:** \`0 Points\`\n\n` +
+            `Invite friends to earn points!`,
+            mainMenu
+        );
     } else {
         await ctx.answerCbQuery("❌ You still haven't joined all channels!", { show_alert: true });
     }
 });
 
 // --- COMMANDS ---
-bot.start(async (ctx) => {
+
+// Added checkJoin here so /start triggers the join check first
+bot.start(checkJoin, async (ctx) => {
     const user = getDB(ctx);
     const refId = ctx.payload;
 
+    // Referral Logic
     if (refId && refId != ctx.from.id && !user.referredBy) {
         user.referredBy = refId;
         const referrer = getDB(refId); 
@@ -111,16 +123,15 @@ bot.start(async (ctx) => {
         }
     }
 
-    await ctx.replyWithPhoto(
-        { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' }, 
-        {
-            caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
-            parse_mode: 'Markdown',
-            ...mainMenu
-        }
+    // Text-only Welcome (No Image as requested)
+    await ctx.replyWithMarkdown(
+        `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n` +
+        `👤 **User:** ${user.name}\n` +
+        `💰 **Starting Balance:** \`0 Points\`\n\n` +
+        `Invite friends to earn points!`,
+        mainMenu
     );
 });
-
 // --- MAIN MENU HANDLERS ---
 bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
     const user = getDB(ctx);
@@ -342,6 +353,7 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
