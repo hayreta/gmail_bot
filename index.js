@@ -7,6 +7,8 @@ const BOT_USERNAME = 'createUnlimitedGmail_Bot';
 
 const bot = new Telegraf(BOT_TOKEN);
 const db = {}; // In-memory database
+const pendingApprovals = {}; // Approval queue storage
+
 bot.use(session());
 
 // DATABASE SIMULATION
@@ -40,13 +42,14 @@ const getMenu = (ctx) => {
     return Markup.keyboard(buttons).resize();
 };
 
-const adminKeyboard = Markup.keyboard([
-    ['📊 Global Stats', '📢 Broadcast'],
-    ['➕ Add Points', '➖ Remove Points'],
-    ['👥 List All Users', '⬅️ Back to User Menu']
+	const adminKeyboard = Markup.keyboard([
+	['📊 Global Stats', '📢 Broadcast'],
+	['Review Approvals', '➕ Add Points'],
+	['➖ Remove Points', '👥 List All Users'],
+	['⬅️ Back to User Menu']
 ]).resize();
 
-const cancelKeyboard = Markup.keyboard([['❌ Cancel Operation']]).resize();
+	const cancelKeyboard = Markup.keyboard([['Cancel Operation']]).resize();
 
 // --- MIDDLEWARE: FORCE JOIN CHECK ---
 async function checkJoin(ctx, next) {
@@ -150,7 +153,6 @@ bot.start(checkJoin, async (ctx) => {
 
 // --- ADVANCED DYNAMIC LOADER ANIMATION ---
 const animateLoader = async (ctx, duration = 10000) => {
-    // Multiple animation frame sets for smoother transitions
     const spinners = {
         dots: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
         line: ['⠁', '⠂', '⠄', '⠂'],
@@ -228,7 +230,6 @@ const animateLoader = async (ctx, duration = 10000) => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(100, Math.floor((elapsed / duration) * 100));
             
-            // Update step based on progress
             stepIdx = Math.floor((progress / 100) * steps.length);
             if (stepIdx >= steps.length) stepIdx = steps.length - 1;
             
@@ -236,7 +237,6 @@ const animateLoader = async (ctx, duration = 10000) => {
             const progressBar = '█'.repeat(Math.floor(progress / 20)) + '░'.repeat(20 - Math.floor(progress / 20));
             const currentFrame = spinners.dots[frameIdx % spinners.dots.length];
             
-            // Determine substep based on progress within current step
             const stepProgress = (progress - (stepIdx * (100 / steps.length))) / (100 / steps.length);
             const substepIdx = Math.floor(stepProgress * currentStep.substeps.length);
             const substep = currentStep.substeps[Math.min(substepIdx, currentStep.substeps.length - 1)];
@@ -275,13 +275,11 @@ const animateLoader = async (ctx, duration = 10000) => {
 
 // --- EMAIL VALIDATION FLOW WITH DYNAMIC CHECKS ---
 const validateEmail = async (ctx, email) => {
-    // Simulate email uniqueness check
-    const existingEmails = []; // Placeholder for existing emails, replace with actual database access
+    const existingEmails = [];
     return !existingEmails.includes(email);
 };
 
 const validatePassword = (password) => {
-    // Check password strength
     const hasUpperCase = /[A-Z]/.test(password);
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumbers = /\d/.test(password);
@@ -306,57 +304,16 @@ const validatePassword = (password) => {
 
 const animateSuccessLoader = async (ctx, email, duration = 10000) => {
     const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-    const checkmarks = ['✓', '✔', '✅'];
     
     const steps = [
-        { 
-            emoji: '✅', 
-            text: 'Email verified successfully...', 
-            progress: 12,
-            details: 'Domain authenticated'
-        },
-        { 
-            emoji: '🔐', 
-            text: 'Password strength validated...', 
-            progress: 25,
-            details: 'Encryption level: AES-256'
-        },
-        { 
-            emoji: '📧', 
-            text: 'Creating Gmail account...', 
-            progress: 40,
-            details: 'Initializing mailbox'
-        },
-        { 
-            emoji: '🌐', 
-            text: 'Syncing with Google servers...', 
-            progress: 55,
-            details: 'Connecting to cloud'
-        },
-        { 
-            emoji: '📱', 
-            text: 'Setting up recovery options...', 
-            progress: 70,
-            details: 'Phone & backup configured'
-        },
-        { 
-            emoji: '🔔', 
-            text: 'Configuring notifications...', 
-            progress: 82,
-            details: 'Alert system active'
-        },
-        { 
-            emoji: '🎯', 
-            text: 'Finalizing account setup...', 
-            progress: 93,
-            details: 'Preparing dashboard'
-        },
-        { 
-            emoji: '🎉', 
-            text: 'Account ready for use...', 
-            progress: 100,
-            details: 'All systems operational'
-        }
+        { emoji: '✅', text: 'Email verified successfully...', progress: 12, details: 'Domain authenticated' },
+        { emoji: '🔐', text: 'Password strength validated...', progress: 25, details: 'Encryption level: AES-256' },
+        { emoji: '📧', text: 'Creating Gmail account...', progress: 40, details: 'Initializing mailbox' },
+        { emoji: '🌐', text: 'Syncing with Google servers...', progress: 55, details: 'Connecting to cloud' },
+        { emoji: '📱', text: 'Setting up recovery options...', progress: 70, details: 'Phone & backup configured' },
+        { emoji: '🔔', text: 'Configuring notifications...', progress: 82, details: 'Alert system active' },
+        { emoji: '🎯', text: 'Finalizing account setup...', progress: 93, details: 'Preparing dashboard' },
+        { emoji: '🎉', text: 'Account ready for use...', progress: 100, details: 'All systems operational' }
     ];
 
     const msg = await ctx.replyWithMarkdown(
@@ -437,10 +394,8 @@ bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
         );
     }
     
-    // Run the beautiful loading animation
     await animateLoader(ctx, 10000);
     
-    // After loading completes, show the email prompt
     ctx.session.step = 'EMAIL';
     ctx.replyWithMarkdown(
         `✅ *REGISTRATION READY*\n\n` +
@@ -506,15 +461,112 @@ bot.hears('🛠 Admin Panel', (ctx) => {
 bot.hears('📊 Global Stats', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const totalUsers = Object.keys(db).length;
-    ctx.replyWithMarkdown(`📈 *Server Statistics*\n\n👥 *Total Users:* ${totalUsers}\n📡 *Server:* Active (Railway)\n⚡ *API Latency:* 42ms`);
+    const pendingCount = Object.keys(pendingApprovals).length;
+    ctx.replyWithMarkdown(
+        `📈 *Server Statistics*\n\n` +
+        `👥 *Total Users:* ${totalUsers}\n` +
+        `⏳ *Pending Approvals:* ${pendingCount}\n` +
+        `✅ *System:* Active & Operational\n` +
+        `⚡ *API Latency:* 42ms`
+    );
 });
 
+// --- REVIEW APPROVALS HANDLER ---
+	bot.hears('Review Approvals', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    
+    const pendingIds = Object.keys(pendingApprovals);
+    if (pendingIds.length === 0) {
+        return ctx.editMessageText("**All registrations have been reviewed.**", { parse_mode: 'Markdown' });
+    }
+    
+    const buttons = pendingIds.map(id => {
+        const r = pendingApprovals[id];
+        return [Markup.button.callback(`👤 ${r.name} | 📧 ${r.email}`, `view_approval:${id}`)];
+    });
+    
+    await ctx.editMessageText(
+        `📋 **REGISTRATION APPROVAL QUEUE**\n\n` +
+        `⏳ Remaining: ${pendingIds.length}\n\n` +
+        `Select next request:`,
+        { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) }
+    );
+});
+
+// --- REJECT REGISTRATION ---
+bot.action(/reject:(.+)/, async (ctx) => {
+    const reqId = ctx.match[1];
+    const req = pendingApprovals[reqId];
+    
+    if (!req) {
+        return ctx.answerCbQuery("❌ Request not found", { show_alert: true });
+    }
+    
+    // Notify user
+    try {
+        await bot.telegram.sendMessage(
+            req.userId,
+		`**REGISTRATION REJECTED**\n\n` +
+            `📧 Email: \`${req.email}\`\n\n` +
+            `Your registration request was reviewed and rejected.\n` +
+            `💰 Your points have been refunded.\n\n` +
+            `Contact admin if you have questions.`,
+            { parse_mode: 'Markdown' }
+        );
+    } catch (e) {}
+    
+    // Remove from pending
+    delete pendingApprovals[reqId];
+    
+		ctx.answerCbQuery("Registration rejected and user notified!", { show_alert: true });
+    
+    const pendingIds = Object.keys(pendingApprovals);
+    if (pendingIds.length === 0) {
+        return ctx.editMessageText("✅ **All registrations have been reviewed.**", { parse_mode: 'Markdown' });
+    }
+    
+    const buttons = pendingIds.map(id => {
+        const r = pendingApprovals[id];
+        return [Markup.button.callback(`👤 ${r.name} | 📧 ${r.email}`, `view_approval:${id}`)];
+    });
+    
+    await ctx.editMessageText(
+        `📋 **REGISTRATION APPROVAL QUEUE**\n\n` +
+        `⏳ Remaining: ${pendingIds.length}\n\n` +
+        `Select next request:`,
+        { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) }
+    );
+});
+
+// --- BACK TO APPROVALS ---
+bot.action('back_to_approvals', async (ctx) => {
+    const pendingIds = Object.keys(pendingApprovals);
+    if (pendingIds.length === 0) {
+		return ctx.editMessageText("**No pending registrations.**", { parse_mode: 'Markdown' });
+    }
+    
+    const buttons = pendingIds.map(reqId => {
+        const req = pendingApprovals[reqId];
+        return [Markup.button.callback(`👤 ${req.name} | 📧 ${req.email}`, `view_approval:${reqId}`)];
+    });
+    
+    await ctx.editMessageText(
+        `📋 **REGISTRATION APPROVAL QUEUE**\n\n` +
+        `⏳ Pending: ${pendingIds.length}\n\n` +
+        `Select a request to review:`,
+        { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) }
+    );
+    ctx.answerCbQuery();
+});
+
+// --- BROADCAST ---
 bot.hears('📢 Broadcast', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     ctx.session.step = 'BROADCAST_PREVIEW';
     ctx.replyWithMarkdown("🛠 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 ADVANCED BROADCAST**\n\n➡️ *Send me anything now...*", cancelKeyboard);
 });
 
+// --- ADMIN POINTS MANAGEMENT ---
 bot.hears('➕ Add Points', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     ctx.session.step = 'ADD_POINTS_ID';
@@ -537,10 +589,10 @@ bot.hears('👥 List All Users', (ctx) => {
 
 bot.hears('⬅️ Back to User Menu', (ctx) => ctx.reply("Returning...", getMenu(ctx)));
 
-// --- TEXT STATE HANDLER (THE ENGINE) ---
+// --- TEXT STATE HANDLER ---
 bot.on('message', async (ctx, next) => {
     const text = ctx.message?.text;
-    if (text === '❌ Cancel Operation') {
+	if (text === 'Cancel Operation') {
         ctx.session = {};
         return ctx.reply("🚫 Operation Terminated.", getMenu(ctx));
     }
@@ -610,7 +662,6 @@ bot.on('message', async (ctx, next) => {
 
     // Gmail Registration Logic - EMAIL VALIDATION
     if (state === 'EMAIL') {
-        // Format check
         if (!text.match(/^[^\s@]+@gmail\.com$/)) {
             return ctx.replyWithMarkdown(
                 `❌ *Invalid Email Format*\n\n` +
@@ -622,7 +673,6 @@ bot.on('message', async (ctx, next) => {
             );
         }
 
-        // Check if email already exists
         const isNewEmail = await validateEmail(ctx, text);
         if (!isNewEmail) {
             return ctx.replyWithMarkdown(
@@ -653,7 +703,6 @@ bot.on('message', async (ctx, next) => {
         const email = ctx.session.email;
         const user = getDB(ctx);
         
-        // Validate password strength
         const passwordCheck = validatePassword(text);
         
         if (!passwordCheck.isValid) {
@@ -671,30 +720,40 @@ bot.on('message', async (ctx, next) => {
             );
         }
 
-        // Store email in user's email list
-        if (!user.emails) user.emails = [];
-        user.emails.push(email);
-        
-        // Run success animation
-        await animateSuccessLoader(ctx, email, 10000);
-        
-        // Deduct points and update stats
-        user.points -= 5;
-        user.registered += 1;
-        
-        // Final success message
+        // Create approval request instead of immediately registering
+        const requestId = `req_${ctx.from.id}_${Date.now()}`;
+        pendingApprovals[requestId] = {
+            userId: ctx.from.id,
+            name: user.name,
+            email: email,
+            passwordStrength: passwordCheck.strength,
+            timestamp: new Date(),
+            password: text // Note: In production, hash this!
+        };
+
         ctx.session = {};
+        
+        // Notify admin
+        try {
+            await bot.telegram.sendMessage(
+                ADMIN_ID,
+                `🔔 **NEW REGISTRATION REQUEST**\n\n` +
+                `👤 User: ${user.name}\n` +
+                `📧 Email: ${email}\n\n` +
+                `⏳ Awaiting your approval...`,
+                { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback("Review Now", "back_to_approvals")]]) }
+            );
+        } catch (e) {}
+        
         return ctx.replyWithMarkdown(
-            `🎉 *ACCOUNT SUCCESSFULLY CREATED* 🎉\n\n` +
+            `⏳ *REGISTRATION PENDING APPROVAL*\n\n` +
             `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
             `✅ Email: \`${email}\`\n` +
             `🔐 Password Strength: ${passwordCheck.strength}\n` +
-            `💰 Points Deducted: -5 pts\n` +
-            `💎 New Balance: ${user.points} pts\n` +
-            `📊 Total Registered: ${user.registered} accounts\n` +
+            `📋 Status: Awaiting Admin Review\n` +
             `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `✨ Your account is ready to use!\n` +
-            `🚀 Secure all credentials safely.`,
+            `💡 Your request has been submitted for approval.\n` +
+            `🔔 You'll be notified once it's reviewed.`,
             getMenu(ctx)
         );
     }
@@ -735,4 +794,3 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
-
