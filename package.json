@@ -5,8 +5,7 @@
   "main": "bot.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node bot.js",
-    "dev": "nodemon bot.js"
+    "start": "node bot.js"
   },
   "keywords": [
     "telegram",
@@ -24,7 +23,5 @@
     "telegraf": "^4.16.3",
     "dotenv": "^16.4.5"
   },
-  "devDependencies": {
-    "nodemon": "^3.1.0"
-  }
+
 }
