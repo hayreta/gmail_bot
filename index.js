@@ -328,52 +328,53 @@ bot.on('text', async (ctx, next) => {
     return next();
 });
 
-// Add Points Logic
-    if (state === 'ADD_POINTS_ID' && ctx.from.id === ADMIN_ID) {
-        ctx.session.targetId = ctx.message.text;
-        ctx.session.step = 'ADD_POINTS_AMT';
-        return ctx.reply("💰 **Enter the number of points to ADD:**");
-    }
+// --- ADD POINTS ---
+if (state === 'ADD_POINTS_ID' && ctx.from.id === ADMIN_ID) {
+    ctx.session.targetId = ctx.message.text;
+    ctx.session.step = 'ADD_POINTS_AMT';
+    return ctx.reply("💰 **Enter the number of points to ADD:**");
+}
 
-    if (state === 'ADD_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
-        const amount = parseInt(ctx.message.text);
-        
-        // 1. Check if the input is actually a number to prevent NaN crashes
-        if (isNaN(amount)) return ctx.reply("❌ Please enter a valid number.");
+if (state === 'ADD_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
+    const amount = parseInt(ctx.message.text);
+    const targetId = ctx.session.targetId; // 1. Save ID to a variable first
 
-        // 2. Keep the ID in a temporary variable so we don't lose it
-        const targetId = ctx.session.targetId;
-        
-        // 3. Update the database
-        const target = getDB({ from: { id: targetId } }); 
-        target.points += amount;
+    if (isNaN(amount)) return ctx.reply("❌ Invalid number. Please try again.");
 
-        // 4. Send the notification
-        try {
-            await bot.telegram.sendMessage(targetId, `🎁 **Bonus!** Admin added ${amount} points to your balance.`);
-        } catch (e) {
-            console.log("Could not notify user: User blocked bot.");
-        }
+    const target = getDB({ from: { id: targetId } }); 
+    target.points += amount;
 
-        // 5. IMPORTANT: Clear the session LAST
-        ctx.session = null; 
+    // 2. Notify the user (with error handling in case they blocked the bot)
+    bot.telegram.sendMessage(targetId, `🎁 **Bonus!** Admin added ${amount} points to your balance.`).catch(e => console.log("User blocked bot"));
 
-        // 6. Use the temporary targetId here
-        return ctx.reply(`✅ Added ${amount} points to User ${targetId}`, adminKeyboard);
-    }
-    // Remove Points Logic
-    if (state === 'REM_POINTS_ID' && ctx.from.id === ADMIN_ID) {
-        ctx.session.targetId = ctx.message.text;
-        ctx.session.step = 'REM_POINTS_AMT';
-        return ctx.reply("💰 **Enter the number of points to REMOVE:**");
-    }
-    if (state === 'REM_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
-        const amount = parseInt(ctx.message.text);
-        const target = getDB(ctx.session.targetId);
-        target.points -= amount;
-        ctx.session = null;
-        return ctx.reply(`✅ Removed ${amount} points from User ${ctx.session.targetId}`, adminKeyboard);
-    } 
+    // 3. Clear session AFTER you are done using the data
+    ctx.session = null; 
+    
+    // 4. Use the saved variable 'targetId' here
+    return ctx.reply(`✅ Added ${amount} points to User ${targetId}`, adminKeyboard);
+}
+
+// --- REMOVE POINTS ---
+if (state === 'REM_POINTS_ID' && ctx.from.id === ADMIN_ID) {
+    ctx.session.targetId = ctx.message.text;
+    ctx.session.step = 'REM_POINTS_AMT';
+    return ctx.reply("💰 **Enter the number of points to REMOVE:**");
+}
+
+if (state === 'REM_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
+    const amount = parseInt(ctx.message.text);
+    const targetId = ctx.session.targetId; // 1. Save ID to a variable first
+
+    if (isNaN(amount)) return ctx.reply("❌ Invalid number. Please try again.");
+
+    const target = getDB({ from: { id: targetId } }); 
+    target.points -= amount;
+
+    ctx.session = null; // 2. Clear session last
+    
+    return ctx.reply(`✅ Removed ${amount} points from User ${targetId}`, adminKeyboard);
+}
+    
     
    //(Optional) Quick Action Add/Remove Logic
   bot.action(/quick_add:(.+)/, (ctx) => {
@@ -436,3 +437,4 @@ bot.action('verify', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
