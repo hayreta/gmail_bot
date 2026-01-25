@@ -1,4 +1,5 @@
 const { Telegraf, Markup, session } = require('telegraf');
+require('dotenv').config();
 
 // CONFIGURATION
 const BOT_TOKEN = process.env.BOT_TOKEN || '8539976683:AAE02vIE0M_YxpKKluoYNQHsogNz-fYfks8';
@@ -30,23 +31,23 @@ const CHANNELS = ['@Hayre37', '@Digital_Claim', '@BIgsew_community', '@hayrefx']
 // --- KEYBOARDS ---
 const getMenu = (ctx) => {
     let buttons = [
-        ['➕ Register New Gmail'],
-        ['⚙️ Account', '🚸 My Referrals'],
-        ['🏥 Help']
+        [{ text: '➕ Register New Gmail', callback_data: 'register' }],
+        [{ text: '⚙️ Account', callback_data: 'account' }, { text: '🚸 My Referrals', callback_data: 'referrals' }],
+        [{ text: '🏥 Help', callback_data: 'help' }]
     ];
     if (ctx.from.id === ADMIN_ID) {
-        buttons.push(['🛠 Admin Panel']);
+        buttons.push([{ text: '🛠 Admin Panel', callback_data: 'admin_panel' }]);
     }
-    return Markup.keyboard(buttons).resize();
+    return Markup.inlineKeyboard(buttons);
 };
 
-const adminKeyboard = Markup.keyboard([
-    ['📊 Global Stats', '📢 Broadcast'],
-    ['➕ Add Points', '➖ Remove Points'],
-    ['👥 List All Users', '⬅️ Back to User Menu']
-]).resize();
+const adminKeyboard = Markup.inlineKeyboard([
+    [{ text: '📊 Global Stats', callback_data: 'stats' }, { text: '📢 Broadcast', callback_data: 'broadcast' }],
+    [{ text: '➕ Add Points', callback_data: 'add_points' }, { text: '➖ Remove Points', callback_data: 'rem_points' }],
+    [{ text: '👥 List All Users', callback_data: 'list_users' }, { text: '⬅️ Back to User Menu', callback_data: 'back_menu' }]
+]);
 
-const cancelKeyboard = Markup.keyboard([['❌ Cancel Operation']]).resize();
+const cancelKeyboard = Markup.inlineKeyboard([{ text: '❌ Cancel Operation', callback_data: 'cancel_op' }]);
 
 // --- MIDDLEWARE: FORCE JOIN CHECK ---
 async function checkJoin(ctx, next) {
@@ -149,30 +150,36 @@ bot.start(checkJoin, async (ctx) => {
 });
 
 // --- MAIN MENU HANDLERS ---
-bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
+bot.action('register', checkJoin, async (ctx) => {
     const user = getDB(ctx);
     if (user.points < 5) {
-        return ctx.replyWithMarkdown(`⚠️ *Insufficient Balance*\n\nYou need **5 Points** to register.\n*Current Balance:* ${user.points} pts`, getMenu(ctx));
+        await ctx.answerCbQuery();
+        return ctx.reply(`⚠️ *Insufficient Balance*\n\nYou need **5 Points** to register.\n*Current Balance:* ${user.points} pts`, { parse_mode: 'Markdown', ...getMenu(ctx) });
     }
     ctx.session.step = 'EMAIL';
-    ctx.replyWithMarkdown("📧 **Please send the Gmail Address**\n\n_Example: name@gmail.com_", cancelKeyboard);
+    await ctx.answerCbQuery();
+    await ctx.reply("📧 **Please send the Gmail Address**\n\n_Example: name@gmail.com_", { parse_mode: 'Markdown', ...cancelKeyboard });
 });
 
-bot.hears('⚙️ Account', (ctx) => {
+bot.action('account', async (ctx) => {
     const user = getDB(ctx);
-    ctx.replyWithMarkdown(`⭐ *PREMIUM ACCOUNT STATUS*\n━━━━━━━━━━━━━━━━━━\n🆔 *User ID:* \`${ctx.from.id}\`\n💰 *Balance:* \`${user.points} Points\`\n📊 *Registered:* \`${user.registered} Gmails\`\n🚸 *Invites:* \`${user.referrals} Users\`\n━━━━━━━━━━━━━━━━━━`, getMenu(ctx));
+    await ctx.answerCbQuery();
+    await ctx.reply(`⭐ *PREMIUM ACCOUNT STATUS*\n━━━━━━━━━━━━━━━━━━\n🆔 *User ID:* \`${ctx.from.id}\`\n💰 *Balance:* \`${user.points} Points\`\n📊 *Registered:* \`${user.registered} Gmails\`\n🚸 *Invites:* \`${user.referrals} Users\`\n━━━━━━━━━━━━━━━━━━`, { parse_mode: 'Markdown', ...getMenu(ctx) });
 });
 
-bot.hears('🚸 My Referrals', (ctx) => {
+bot.action('referrals', async (ctx) => {
     const user = getDB(ctx); 
     const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
     const totalEarned = (user.referrals || 0) * 1;
-    ctx.replyWithMarkdown(`✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n━━━━━━━━━━━━━━━━━━\n👤 **User:** ${user.name}\n👥 **Total Referrals:** \`${user.referrals || 0}\`\n💰 **Total Earned:** \`${totalEarned} Points\`\n━━━━━━━━━━━━━━━━━━\n🎁 **Reward:** \`1 Point\` per join!\n\n🔗 **Your Unique Link:**\n\`${link}\``, 
-        Markup.inlineKeyboard([[Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],[Markup.button.callback("📊 Refresh Stats", "refresh_ref")]]) );
+    await ctx.answerCbQuery();
+    await ctx.reply(`✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n━━━━━━━━━━━━━━━━━━\n👤 **User:** ${user.name}\n👥 **Total Referrals:** \`${user.referrals || 0}\`\n💰 **Total Earned:** \`${totalEarned} Points\`\n━━━━━━━━━━━━━━━━━━\n🎁 **Reward:** \`1 Point\` per join!\n\n🔗 **Your Unique Link:**\n\`${link}\``, { 
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([[Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],[Markup.button.callback("📊 Refresh Stats", "refresh_ref")]])
+    });
 });
 
 // --- HELP MESSAGE HANDLER ---
-bot.hears('🏥 Help', async (ctx) => {
+bot.action('help', async (ctx) => {
     const helpMessage = 
         `🌟 **Account Registration System** 🌟\n\n` +
         `✅ **Registration Access**\n\n` +
@@ -186,11 +193,13 @@ bot.hears('🏥 Help', async (ctx) => {
         `🧠 The system uses AI detection to identify fake or inactive users, and they are automatically excluded from the count.\n\n` +
         `✅ Only real, valid users are recorded and rewarded.`;
 
-    await ctx.replyWithMarkdown(helpMessage, 
-        Markup.inlineKeyboard([
+    await ctx.answerCbQuery();
+    await ctx.reply(helpMessage, { 
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
             [Markup.button.callback("🗑️ Mark as Read & Close", "close_help")]
         ])
-    );
+    });
 });
 
 // --- DELETE ACTION ---
@@ -199,172 +208,261 @@ bot.action('close_help', async (ctx) => {
         await ctx.deleteMessage();
         await ctx.answerCbQuery("Message marked as read ✅");
     } catch (e) {
-        ctx.answerCbQuery("Already deleted.");
+        await ctx.answerCbQuery("Already deleted.");
     }
 });
 
 // --- ADMIN PANEL ---
-bot.hears('🛠 Admin Panel', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ This area is restricted to Developers.");
-    ctx.reply("🛠 **Advanced Admin Dashboard**\nSelect a management tool:", adminKeyboard);
+bot.action('admin_panel', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) {
+        await ctx.answerCbQuery("❌ This area is restricted to Developers.", { show_alert: true });
+        return;
+    }
+    await ctx.answerCbQuery();
+    await ctx.reply("🛠 **Advanced Admin Dashboard**\nSelect a management tool:", { parse_mode: 'Markdown', ...adminKeyboard });
 });
 
-bot.hears('📊 Global Stats', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
+bot.action('stats', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) {
+        await ctx.answerCbQuery("❌ Unauthorized", { show_alert: true });
+        return;
+    }
     const totalUsers = Object.keys(db).length;
-    ctx.replyWithMarkdown(`📈 *Server Statistics*\n\n👥 *Total Users:* ${totalUsers}\n📡 *Server:* Active (Railway)\n⚡ *API Latency:* 42ms`);
+    await ctx.answerCbQuery();
+    await ctx.reply(`📈 *Server Statistics*\n\n👥 *Total Users:* ${totalUsers}\n📡 *Server:* Active (Railway)\n⚡ *API Latency:* 42ms`, { parse_mode: 'Markdown', ...adminKeyboard });
 });
 
-bot.hears('📢 Broadcast', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
+bot.action('broadcast', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) {
+        await ctx.answerCbQuery("❌ Unauthorized", { show_alert: true });
+        return;
+    }
     ctx.session.step = 'BROADCAST_PREVIEW';
-    ctx.replyWithMarkdown("🛠 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 ADVANCED BROADCAST**\n\n➡️ *Send me anything now...*", cancelKeyboard);
+    await ctx.answerCbQuery();
+    await ctx.reply("🛠 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 ADVANCED BROADCAST**\n\n➡️ *Send me anything now...*", { parse_mode: 'Markdown', ...cancelKeyboard });
 });
 
-bot.hears('➕ Add Points', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
+bot.action('add_points', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) {
+        await ctx.answerCbQuery("❌ Unauthorized", { show_alert: true });
+        return;
+    }
     ctx.session.step = 'ADD_POINTS_ID';
-    ctx.reply("➕ **Send the User ID to add points to:**", cancelKeyboard);
+    await ctx.answerCbQuery();
+    await ctx.reply("➕ **Send the User ID to add points to:**", { parse_mode: 'Markdown', ...cancelKeyboard });
 });
 
-bot.hears('➖ Remove Points', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
+bot.action('rem_points', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) {
+        await ctx.answerCbQuery("❌ Unauthorized", { show_alert: true });
+        return;
+    }
     ctx.session.step = 'REM_POINTS_ID';
-    ctx.reply("➖ **Send the User ID to remove points from:**", cancelKeyboard);
+    await ctx.answerCbQuery();
+    await ctx.reply("➖ **Send the User ID to remove points from:**", { parse_mode: 'Markdown', ...cancelKeyboard });
 });
 
-bot.hears('👥 List All Users', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
+bot.action('list_users', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) {
+        await ctx.answerCbQuery("❌ Unauthorized", { show_alert: true });
+        return;
+    }
+    await ctx.answerCbQuery();
     const userIds = Object.keys(db);
     if (userIds.length === 0) return ctx.reply("📭 Database is empty.");
     const buttons = userIds.map(id => [Markup.button.callback(`👤 ${db[id].name} [${db[id].username}] | 💰 ${db[id].points}`, `view_prof:${id}`)]);
-    ctx.replyWithMarkdown("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", Markup.inlineKeyboard(buttons));
+    await ctx.reply("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) });
 });
 
-bot.hears('⬅️ Back to User Menu', (ctx) => ctx.reply("Returning...", getMenu(ctx)));
+bot.action('back_menu', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply("Returning...", { parse_mode: 'Markdown', ...getMenu(ctx) });
+});
 
 // --- TEXT STATE HANDLER (THE ENGINE) ---
 bot.on('message', async (ctx, next) => {
-    const text = ctx.message?.text;
-    if (text === '❌ Cancel Operation') {
-        ctx.session = {};
-        return ctx.reply("🚫 Operation Terminated.", getMenu(ctx));
-    }
+    try {
+        const text = ctx.message?.text;
+        const state = ctx.session?.step;
 
-    const state = ctx.session?.step;
-    if (!state) return next();
+        if (!state) return next();
 
-    // Broadcast Logic
-    if (state === 'BROADCAST_PREVIEW' && ctx.from.id === ADMIN_ID) {
-        ctx.session.msgToCopy = ctx.message.message_id;
-        ctx.session.step = 'BROADCAST_CONFIRM';
-        await ctx.reply("👇 **PREVIEW OF YOUR POST:**");
-        await ctx.telegram.copyMessage(ctx.chat.id, ctx.chat.id, ctx.message.message_id);
-        return ctx.reply("⬆️ **Does this look correct?**", Markup.keyboard([['✅ CONFIRM & SEND'], ['❌ Cancel Operation']]).resize());
-    }
+        // Broadcast Logic
+        if (state === 'BROADCAST_PREVIEW' && ctx.from.id === ADMIN_ID) {
+            ctx.session.msgToCopy = ctx.message.message_id;
+            ctx.session.step = 'BROADCAST_CONFIRM';
+            await ctx.reply("👇 **PREVIEW OF YOUR POST:**");
+            await ctx.telegram.copyMessage(ctx.chat.id, ctx.chat.id, ctx.message.message_id);
+            return ctx.reply("⬆️ **Does this look correct?**", Markup.inlineKeyboard([['✅ CONFIRM & SEND'], ['❌ Cancel Operation']]).resize());
+        }
 
-    if (state === 'BROADCAST_CONFIRM' && text === '✅ CONFIRM & SEND' && ctx.from.id === ADMIN_ID) {
-        const users = Object.keys(db);
-        await ctx.reply(`🚀 **Broadcasting to ${users.length} users...**`);
-        for (const userId of users) {
-            try { 
-                await ctx.telegram.copyMessage(userId, ctx.chat.id, ctx.session.msgToCopy); 
+        if (state === 'BROADCAST_CONFIRM' && text === '✅ CONFIRM & SEND' && ctx.from.id === ADMIN_ID) {
+            const users = Object.keys(db);
+            await ctx.reply(`🚀 **Broadcasting to ${users.length} users...**`);
+            for (const userId of users) {
+                try { 
+                    await ctx.telegram.copyMessage(userId, ctx.chat.id, ctx.session.msgToCopy); 
+                } catch (e) {}
+            }
+            ctx.session = {};
+            return ctx.reply("📢 **BROADCAST COMPLETE**", { parse_mode: 'Markdown', ...adminKeyboard });
+        }
+
+        // Add Points Logic
+        if (state === 'ADD_POINTS_ID' && ctx.from.id === ADMIN_ID) {
+            ctx.session.targetId = text;
+            ctx.session.step = 'ADD_POINTS_AMT';
+            return ctx.reply("💰 **Enter the number of points to ADD:**", { parse_mode: 'Markdown', ...cancelKeyboard });
+        }
+        if (state === 'ADD_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
+            const amount = parseInt(text);
+            if (isNaN(amount) || amount < 0) {
+                return ctx.reply("❌ Enter a valid positive number.");
+            }
+            const targetId = ctx.session.targetId;
+            const target = getDB(targetId);
+            target.points += amount;
+            try {
+                await bot.telegram.sendMessage(targetId, `🎁 **Bonus!** Admin added ${amount} points.`, { parse_mode: 'Markdown' });
             } catch (e) {}
+            ctx.session = {};
+            return ctx.reply(`✅ Added ${amount} points to User ${targetId}`, { parse_mode: 'Markdown', ...adminKeyboard });
         }
-        ctx.session = {};
-        return ctx.reply("📢 **BROADCAST COMPLETE**", adminKeyboard);
-    }
 
-    // Add Points Logic
-    if (state === 'ADD_POINTS_ID' && ctx.from.id === ADMIN_ID) {
-        ctx.session.targetId = text;
-        ctx.session.step = 'ADD_POINTS_AMT';
-        return ctx.reply("💰 **Enter the number of points to ADD:**");
-    }
-    if (state === 'ADD_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
-        const amount = parseInt(text);
-        if (isNaN(amount) || amount < 0) {
-            return ctx.reply("❌ Enter a valid positive number.");
+        // Remove Points Logic
+        if (state === 'REM_POINTS_ID' && ctx.from.id === ADMIN_ID) {
+            ctx.session.targetId = text;
+            ctx.session.step = 'REM_POINTS_AMT';
+            return ctx.reply("💰 **Enter the number of points to REMOVE:**", { parse_mode: 'Markdown', ...cancelKeyboard });
         }
-        const targetId = ctx.session.targetId;
-        const target = getDB(targetId);
-        target.points += amount;
+        if (state === 'REM_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
+            const amount = parseInt(text);
+            if (isNaN(amount) || amount < 0) {
+                return ctx.reply("❌ Enter a valid positive number.");
+            }
+            const targetId = ctx.session.targetId;
+            const target = getDB(targetId);
+            target.points = Math.max(0, target.points - amount);
+            ctx.session = {};
+            return ctx.reply(`✅ Removed ${amount} points from User ${targetId}`, { parse_mode: 'Markdown', ...adminKeyboard });
+        }
+
+        // Gmail Registration Logic
+        if (state === 'EMAIL') {
+            if (!text.endsWith('@gmail.com')) return ctx.reply("❌ Send a valid @gmail.com.");
+            ctx.session.email = text;
+            ctx.session.step = 'PASS';
+            return ctx.reply("🔑 **Please send the Password**", { parse_mode: 'Markdown', ...cancelKeyboard });
+        }
+
+        if (state === 'PASS') {
+            const email = ctx.session.email;
+            const user = getDB(ctx);
+            user.points -= 5;
+            user.registered += 1;
+            ctx.session = {};
+            return ctx.reply(`✅ **Success!**\n\n📧 *Email:* \`${email}\`\n\nBalance: ${user.points}`, { parse_mode: 'Markdown', ...getMenu(ctx) });
+        }
+
+        return next();
+    } catch (err) {
+        console.error('[v0] Error in message handler:', err);
         try {
-            await bot.telegram.sendMessage(targetId, `🎁 **Bonus!** Admin added ${amount} points.`, { parse_mode: 'Markdown' });
+            await ctx.reply("❌ An error occurred. Please try again.");
         } catch (e) {}
-        ctx.session = {};
-        return ctx.reply(`✅ Added ${amount} points to User ${targetId}`, adminKeyboard);
-    }
-
-    // Remove Points Logic
-    if (state === 'REM_POINTS_ID' && ctx.from.id === ADMIN_ID) {
-        ctx.session.targetId = text;
-        ctx.session.step = 'REM_POINTS_AMT';
-        return ctx.reply("💰 **Enter the number of points to REMOVE:**");
-    }
-    if (state === 'REM_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
-        const amount = parseInt(text);
-        if (isNaN(amount) || amount < 0) {
-            return ctx.reply("❌ Enter a valid positive number.");
-        }
-        const targetId = ctx.session.targetId;
-        const target = getDB(targetId);
-        target.points = Math.max(0, target.points - amount);
-        ctx.session = {};
-        return ctx.reply(`✅ Removed ${amount} points from User ${targetId}`, adminKeyboard);
-    }
-
-    // Gmail Registration Logic
-    if (state === 'EMAIL') {
-        if (!text.endsWith('@gmail.com')) return ctx.reply("❌ Send a valid @gmail.com.");
-        ctx.session.email = text;
-        ctx.session.step = 'PASS';
-        return ctx.reply("🔑 **Please send the Password**");
-    }
-
-    if (state === 'PASS') {
-        const email = ctx.session.email;
-        const user = getDB(ctx);
-        user.points -= 5;
-        user.registered += 1;
-        ctx.session = {};
-        return ctx.replyWithMarkdown(`✅ **Success!**\n\n📧 *Email:* \`${email}\`\n\nBalance: ${user.points}`, getMenu(ctx));
     }
 });
 
 // --- CALLBACK HANDLERS ---
-bot.action(/view_prof:(.+)/, async (ctx) => {
-    const targetId = ctx.match[1];
-    const u = db[targetId];
-    if (!u) return ctx.answerCbQuery("❌ User not found.");
-    const profileText = `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER INTELLIGENCE** ✨\n━━━━━━━━━━━━━━━━━━\n👤 **User:** ${u.name}\n🆔 **User ID:** \`${targetId}\`\n💰 **Balance:** \`${u.points} Points\`\n━━━━━━━━━━━━━━━━━━`;
-    await ctx.editMessageText(profileText, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback("➕ Add Points", `quick_add:${targetId}`), Markup.button.callback("➖ Rem Points", `quick_rem:${targetId}`)],[Markup.button.callback("⬅️ Back", "list_users_back")]]) });
+bot.action('cancel_op', async (ctx) => {
+    ctx.session = {};
+    await ctx.answerCbQuery("Operation cancelled ✅");
+    await ctx.reply("🚫 Operation Terminated.", { parse_mode: 'Markdown', ...getMenu(ctx) });
 });
 
-bot.action(/quick_add:(.+)/, (ctx) => {
+bot.action(/view_prof:(.+)/, async (ctx) => {
+    try {
+        const targetId = ctx.match[1];
+        const u = db[targetId];
+        if (!u) {
+            await ctx.answerCbQuery("❌ User not found.");
+            return;
+        }
+        const profileText = `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER INTELLIGENCE** ✨\n━━━━━━━━━━━━━━━━━━\n👤 **User:** ${u.name}\n🆔 **User ID:** \`${targetId}\`\n💰 **Balance:** \`${u.points} Points\`\n━━━━━━━━━━━━━━━━━━`;
+        await ctx.editMessageText(profileText, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback("➕ Add Points", `quick_add:${targetId}`), Markup.button.callback("➖ Rem Points", `quick_rem:${targetId}`)],[Markup.button.callback("⬅️ Back", "list_users_back")]]) });
+        await ctx.answerCbQuery();
+    } catch (err) {
+        console.error('[v0] Error in view_prof:', err);
+        await ctx.answerCbQuery("Error loading profile.");
+    }
+});
+
+bot.action(/quick_add:(.+)/, async (ctx) => {
     ctx.session.step = 'ADD_POINTS_AMT';
     ctx.session.targetId = ctx.match[1];
-    ctx.reply(`💰 **Enter points to add for ID ${ctx.match[1]}:**`, cancelKeyboard);
-    ctx.answerCbQuery();
+    await ctx.answerCbQuery();
+    await ctx.reply(`💰 **Enter points to add for ID ${ctx.match[1]}:**`, { parse_mode: 'Markdown', ...cancelKeyboard });
 });
 
-bot.action(/quick_rem:(.+)/, (ctx) => {
+bot.action(/quick_rem:(.+)/, async (ctx) => {
     ctx.session.step = 'REM_POINTS_AMT';
     ctx.session.targetId = ctx.match[1];
-    ctx.reply(`💰 **Enter points to remove for ID ${ctx.match[1]}:**`, cancelKeyboard);
-    ctx.answerCbQuery();
+    await ctx.answerCbQuery();
+    await ctx.reply(`💰 **Enter points to remove for ID ${ctx.match[1]}:**`, { parse_mode: 'Markdown', ...cancelKeyboard });
 });
 
 bot.action('list_users_back', async (ctx) => {
-    const userIds = Object.keys(db);
-    const buttons = userIds.map(id => [Markup.button.callback(`👤 ID: ${id} | 💰 ${db[id].points} pts`, `view_prof:${id}`)]);
-    await ctx.editMessageText("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) });
+    try {
+        const userIds = Object.keys(db);
+        const buttons = userIds.map(id => [Markup.button.callback(`👤 ID: ${id} | 💰 ${db[id].points} pts`, `view_prof:${id}`)]);
+        await ctx.editMessageText("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) });
+        await ctx.answerCbQuery();
+    } catch (err) {
+        console.error('[v0] Error in list_users_back:', err);
+        await ctx.answerCbQuery("Error loading user list.");
+    }
 });
 
-bot.action('refresh_ref', (ctx) => {
+bot.action('refresh_ref', async (ctx) => {
     const user = getDB(ctx);
-    ctx.answerCbQuery(`Stats Updated! Points: ${user.points}`);
+    await ctx.answerCbQuery(`Stats Updated! Points: ${user.points}`);
 });
 
-bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+// --- GRACEFUL SHUTDOWN FOR RAILWAY ---
+process.on('SIGTERM', async () => {
+    console.log('[v0] SIGTERM received, gracefully shutting down...');
+    try {
+        await bot.stop('SIGTERM');
+    } catch (err) {
+        console.error('[v0] Error stopping bot:', err);
+    }
+    process.exit(0);
+});
 
+process.on('SIGINT', async () => {
+    console.log('[v0] SIGINT received, gracefully shutting down...');
+    try {
+        await bot.stop('SIGINT');
+    } catch (err) {
+        console.error('[v0] Error stopping bot:', err);
+    }
+    process.exit(0);
+});
+
+// --- GLOBAL ERROR HANDLERS ---
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[v0] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('[v0] Uncaught Exception:', err);
+    process.exit(1);
+});
+
+// --- LAUNCH BOT ---
+bot.launch().then(() => {
+    console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀");
+}).catch((err) => {
+    console.error('[v0] Failed to launch bot:', err);
+    process.exit(1);
+});
