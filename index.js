@@ -584,7 +584,7 @@ ${formatted || 'No recent actions'}
 
         this.bot.hears('⬅️ Back to User Menu', (ctx) => {
             ctx.session = {};
-            ctx.reply('↩️ Returning to User Menu...');
+            ctx.reply('↩️ Returning to User Menu...', getMenu(ctx));
         });
 
         // Cancel
@@ -596,9 +596,31 @@ ${formatted || 'No recent actions'}
         // State Handler
         this.bot.on('message', async (ctx, next) => {
             const state = ctx.session?.step;
-            if (!state || !this.isAdmin(ctx)) return next();
+            if (!state) return next();
 
             const text = ctx.message?.text;
+
+            // Gmail Registration Logic - Handle both admin and regular users
+            if (state === 'EMAIL') {
+                if (!text.endsWith('@gmail.com')) {
+                    return ctx.reply("❌ Send a valid @gmail.com.");
+                }
+                ctx.session.email = text;
+                ctx.session.step = 'PASS';
+                return ctx.reply("🔑 **Please send the Password**", cancelKeyboard);
+            }
+
+            if (state === 'PASS') {
+                const email = ctx.session.email;
+                const user = getDB(ctx);
+                user.points -= 5;
+                user.registered += 1;
+                ctx.session = {};
+                return ctx.replyWithMarkdown(`✅ **Success!**\n\n📧 *Email:* \`${email}\`\n\nBalance: ${user.points}`, getMenu(ctx));
+            }
+
+            // Admin-only operations
+            if (!this.isAdmin(ctx)) return next();
 
             // Search Logic
             if (state === 'SEARCH_QUERY') {
@@ -684,36 +706,12 @@ ${formatted || 'No recent actions'}
     }
 }
 
-module.exports = AdvancedAdminPanel;
-
-    // Gmail Registration Logic
-    if (state === 'EMAIL') {
-        if (!text.endsWith('@gmail.com')) return ctx.reply("❌ Send a valid @gmail.com.");
-        ctx.session.email = text;
-        ctx.session.step = 'PASS';
-        return ctx.reply("🔑 **Please send the Password**");
-    }
-
-    if (state === 'PASS') {
-        const email = ctx.session.email;
-        const user = getDB(ctx);
-        user.points -= 5;
-        user.registered += 1;
-        ctx.session = {};
-        return ctx.replyWithMarkdown(`✅ **Success!**\n\n📧 *Email:* \`${email}\`\n\nBalance: ${user.points}`, getMenu(ctx));
-    }
-});
+// Initialize Admin Panel
+const adminPanel = new AdvancedAdminPanel(bot, db, ADMIN_ID);
 
 // --- CALLBACK HANDLERS ---
-bot.action(/view_prof:(.+)/, async (ctx) => {
-    const targetId = ctx.match[1];
-    const u = db[targetId];
-    if (!u) return ctx.answerCbQuery("❌ User not found.");
-    const profileText = `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER INTELLIGENCE** ✨\n━━━━━━━━━━━━━━━━━━\n👤 **User:** ${u.name}\n🆔 **User ID:** \`${targetId}\`\n💰 **Balance:** \`${u.points} Points\`\n━━━━━━━━━━━━━━━━━━`;
-    await ctx.editMessageText(profileText, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback("➕ Add Points", `quick_add:${targetId}`), Markup.button.callback("➖ Rem Points", `quick_rem:${targetId}`)],[Markup.button.callback("⬅️ Back", "list_users_back")]]) });
-});
-
 bot.action(/quick_add:(.+)/, (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return ctx.answerCbQuery('❌ Access denied');
     ctx.session.step = 'ADD_POINTS_AMT';
     ctx.session.targetId = ctx.match[1];
     ctx.reply(`💰 **Enter points to add for ID ${ctx.match[1]}:**`, cancelKeyboard);
@@ -721,6 +719,7 @@ bot.action(/quick_add:(.+)/, (ctx) => {
 });
 
 bot.action(/quick_rem:(.+)/, (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return ctx.answerCbQuery('❌ Access denied');
     ctx.session.step = 'REM_POINTS_AMT';
     ctx.session.targetId = ctx.match[1];
     ctx.reply(`💰 **Enter points to remove for ID ${ctx.match[1]}:**`, cancelKeyboard);
@@ -728,6 +727,7 @@ bot.action(/quick_rem:(.+)/, (ctx) => {
 });
 
 bot.action('list_users_back', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return ctx.answerCbQuery('❌ Access denied');
     const userIds = Object.keys(db);
     const buttons = userIds.map(id => [Markup.button.callback(`👤 ID: ${id} | 💰 ${db[id].points} pts`, `view_prof:${id}`)]);
     await ctx.editMessageText("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) });
@@ -739,6 +739,3 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
-
-
-
