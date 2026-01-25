@@ -179,6 +179,37 @@ bot.hears('➕ Add Points', (ctx) => {
     ctx.session.step = 'ADD_POINTS_ID';
     ctx.reply("➕ **Send User ID:**", cancelKeyboard);
 });
+// --- HELP MESSAGE HANDLER ---
+bot.hears('🏥 Help', async (ctx) => {
+    const helpMessage = 
+        `🌟 **Account Registration System** 🌟\n\n` +
+        `✅ **Registration Access**\n\n` +
+        `🧢 **Allowed Limit:**\n\n` +
+        `🤖 The robot has no restrictions on creating accounts using new methods and multiple servers.\n\n` +
+        `You can create unlimited Gmail accounts with full automation.\n\n` +
+        `⚠️ For safety and long-term stability, we recommend creating 5–10 accounts per hour to avoid bans and security flags.\n\n` +
+        `🛍️ **My Referrals System**\n` +
+        `☔ **Referral Tracking:**\n\n` +
+        `📊 Your referral count is updated every 24 hours.\n\n` +
+        `🧠 The system uses AI detection to identify fake or inactive users, and they are automatically excluded from the count.\n\n` +
+        `✅ Only real, valid users are recorded and rewarded.`;
+
+    await ctx.replyWithMarkdown(helpMessage, 
+        Markup.inlineKeyboard([
+            [Markup.button.callback("🗑️ Mark as Read & Close", "close_help")]
+        ])
+    );
+});
+
+// --- CLOSE ACTION HANDLER ---
+bot.action('close_help', async (ctx) => {
+    try {
+        await ctx.deleteMessage();
+        await ctx.answerCbQuery("Message marked as read ✅");
+    } catch (e) {
+        await ctx.answerCbQuery("Already closed.");
+    }
+});
 
 // --- MESSAGE HANDLER (ENGINE) ---
 bot.on('message', async (ctx) => {
@@ -225,3 +256,4 @@ bot.on('message', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Online 🚀"));
+
