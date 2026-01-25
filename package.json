@@ -1,27 +1,16 @@
 {
-  "name": "create-unlimited-gmail-bot",
-  "version": "1.1.0",
-  "description": "Premium Gmail Registration Bot powered by Telegram",
+  "name": " createUnlimitedGmail Bott",
+  "version": "1.0.0",
+  "description": "Premium Gmail Registration Bot",
   "main": "index.js",
-  "type": "module",
-  "engines": {
-    "node": "18.x"
-  },
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js"
+    "start": "node index.js"
   },
-  "keywords": [
-    "telegram",
-    "bot",
-    "gmail",
-    "registration"
-  ],
+  "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "telegraf": "^4.16.3",
-    "dotenv": "^16.3.1",
-    "axios": "^1.6.5"
+    "dotenv": "^17.2.3",
+    "telegraf": "^4.16.3"
   }
 }
