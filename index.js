@@ -192,100 +192,119 @@ bot.hears('🏥 Help', async (ctx) => {
     );
 });
 
-// --- ADMIN HANDLERS ---
+
+// --- ADMIN PANEL ---
 bot.hears('🛠 Admin Panel', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ Restricted.");
-    ctx.reply("🛠 Admin Dashboard", adminKeyboard);
+    if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ This area is restricted to Developers.");
+    ctx.reply("🛠 **Advanced Admin Dashboard**\nSelect a management tool:", adminKeyboard);
 });
 
 bot.hears('📊 Global Stats', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const totalUsers = Object.keys(db).length;
-    ctx.replyWithMarkdown(`📈 Server Statistics\n👥 Total Users: ${totalUsers}`);
-});
-
-bot.hears('➕ Add Points', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    ctx.session.step = 'ADD_POINTS_ID';
-    ctx.reply("➕ Send User ID:", cancelKeyboard);
+    ctx.replyWithMarkdown(`📈 *Server Statistics*\n\n👥 *Total Users:* ${totalUsers}\n📡 *Server:* Active (Railway)\n⚡ *API Latency:* 42ms`);
 });
 
 bot.hears('📢 Broadcast', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     ctx.session.step = 'BROADCAST_PREVIEW';
-    ctx.replyWithMarkdown(
-        "🛠 **ADVANCED BROADCAST**\nSend anything (Text, Photo, Video, Sticker)",
-        cancelKeyboard
-    );
+    ctx.replyWithMarkdown("🛠 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 ADVANCED BROADCAST**\n\n➡️ *Send me anything now...*", cancelKeyboard);
 });
 
-// --- ENGINE: MESSAGE HANDLER ---
+bot.hears('➕ Add Points', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    ctx.session.step = 'ADD_POINTS_ID';
+    ctx.reply("➕ **Send the User ID to add points to:**", cancelKeyboard);
+});
+
+bot.hears('➖ Remove Points', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    ctx.session.step = 'REM_POINTS_ID';
+    ctx.reply("➖ **Send the User ID to remove points from:**", cancelKeyboard);
+});
+
+bot.hears('👥 List All Users', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    const userIds = Object.keys(db);
+    if (userIds.length === 0) return ctx.reply("📭 Database is empty.");
+    const buttons = userIds.map(id => [Markup.button.callback(`👤 ${db[id].name} [${db[id].username}] | 💰 ${db[id].points}`, `view_prof:${id}`)]);
+    ctx.replyWithMarkdown("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", Markup.inlineKeyboard(buttons));
+});
+
+bot.hears('⬅️ Back to User Menu', (ctx) => ctx.reply("Returning...", getMenu(ctx)));
+
+// --- TEXT STATE HANDLER (THE ENGINE) ---
 bot.on('message', async (ctx, next) => {
     const text = ctx.message?.text;
-    const state = ctx.session?.step;
-
     if (text === '❌ Cancel Operation') {
         ctx.session = {};
         return ctx.reply("🚫 Operation Terminated.", getMenu(ctx));
     }
 
+    const state = ctx.session?.step;
     if (!state) return next();
 
-    const user = getDB(ctx);
-
-    switch(state) {
-        case 'EMAIL':
-            if (!text.endsWith('@gmail.com')) return ctx.reply("❌ Send a valid @gmail.com address.");
-            ctx.session.email = text;
-            ctx.session.step = 'PASS';
-            return ctx.reply("🔑 Send Password:");
-        
-        case 'PASS':
-            user.points -= 5;
-            user.registered += 1;
-            const email = ctx.session.email;
-            ctx.session = {};
-            return ctx.replyWithMarkdown(`✅ Registered!\n📧 Email: \`${email}\`\n🔑 Pass: \`${text}\`\nBalance: ${user.points}`, getMenu(ctx));
-
-        case 'ADD_POINTS_ID':
-            ctx.session.targetId = text;
-            ctx.session.step = 'ADD_POINTS_AMT';
-            return ctx.reply("💰 Enter points to add:");
-
-        case 'ADD_POINTS_AMT':
-            if (ctx.from.id !== ADMIN_ID) return;
-            const amt = parseInt(text);
-            const target = getDB(ctx.session.targetId);
-            if (target && !isNaN(amt)) target.points += amt;
-            ctx.session = {};
-            return ctx.reply(`✅ Added ${amt} points to ${ctx.session.targetId || "Unknown"}`, adminKeyboard);
-
-        case 'BROADCAST_PREVIEW':
-            if (ctx.from.id !== ADMIN_ID) return;
-            ctx.session.msgToCopy = ctx.message.message_id;
-            ctx.session.step = 'BROADCAST_CONFIRM';
-            await ctx.reply("👇 Preview of your post:");
-            await ctx.telegram.copyMessage(ctx.chat.id, ctx.chat.id, ctx.message.message_id);
-            return ctx.reply("⬆️ Confirm to send?", Markup.keyboard([['✅ CONFIRM & SEND'], ['❌ Cancel Operation']]).resize());
-
-        case 'BROADCAST_CONFIRM':
-            if (ctx.from.id !== ADMIN_ID || text !== '✅ CONFIRM & SEND') return;
-            const users = Object.keys(db);
-            let successCount = 0, failCount = 0;
-            await ctx.reply(`🚀 Broadcasting to ${users.length} users...`, Markup.removeKeyboard());
-
-            for (const id of users) {
-                try { await ctx.telegram.copyMessage(id, ctx.chat.id, ctx.session.msgToCopy); successCount++; }
-                catch { failCount++; }
-            }
-
-            ctx.session = {};
-            return ctx.reply(`📢 Broadcast Complete\n✅ Success: ${successCount}\n❌ Failed: ${failCount}`, adminKeyboard);
-
-        default:
-            return next();
+    // Broadcast Logic
+    if (state === 'BROADCAST_PREVIEW' && ctx.from.id === ADMIN_ID) {
+        ctx.session.msgToCopy = ctx.message.message_id;
+        ctx.session.step = 'BROADCAST_CONFIRM';
+        await ctx.reply("👇 **PREVIEW OF YOUR POST:**");
+        await ctx.telegram.copyMessage(ctx.chat.id, ctx.chat.id, ctx.message.message_id);
+        return ctx.reply("⬆️ **Does this look correct?**", Markup.keyboard([['✅ CONFIRM & SEND'], ['❌ Cancel Operation']]).resize());
     }
-});
+
+    if (state === 'BROADCAST_CONFIRM' && text === '✅ CONFIRM & SEND' && ctx.from.id === ADMIN_ID) {
+        const users = Object.keys(db);
+        await ctx.reply(`🚀 **Broadcasting to ${users.length} users...**`);
+        for (const userId of users) {
+            try { 
+                await ctx.telegram.copyMessage(userId, ctx.chat.id, ctx.session.msgToCopy); 
+            } catch (e) {}
+        }
+        ctx.session = {};
+        return ctx.reply("📢 **BROADCAST COMPLETE**", adminKeyboard);
+    }
+
+    // Add Points Logic
+    if (state === 'ADD_POINTS_ID' && ctx.from.id === ADMIN_ID) {
+        ctx.session.targetId = text;
+        ctx.session.step = 'ADD_POINTS_AMT';
+        return ctx.reply("💰 **Enter the number of points to ADD:**");
+    }
+    if (state === 'ADD_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
+        const amount = parseInt(text);
+        if (isNaN(amount) || amount < 0) {
+            return ctx.reply("❌ Enter a valid positive number.");
+        }
+        const targetId = ctx.session.targetId;
+        const target = getDB(targetId);
+        target.points += amount;
+        try {
+            await bot.telegram.sendMessage(targetId, `🎁 **Bonus!** Admin added ${amount} points.`, { parse_mode: 'Markdown' });
+        } catch (e) {}
+        ctx.session = {};
+        return ctx.reply(`✅ Added ${amount} points to User ${targetId}`, adminKeyboard);
+    }
+
+    // Remove Points Logic
+    if (state === 'REM_POINTS_ID' && ctx.from.id === ADMIN_ID) {
+        ctx.session.targetId = text;
+        ctx.session.step = 'REM_POINTS_AMT';
+        return ctx.reply("💰 **Enter the number of points to REMOVE:**");
+    }
+    if (state === 'REM_POINTS_AMT' && ctx.from.id === ADMIN_ID) {
+        const amount = parseInt(text);
+        if (isNaN(amount) || amount < 0) {
+            return ctx.reply("❌ Enter a valid positive number.");
+        }
+        const targetId = ctx.session.targetId;
+        const target = getDB(targetId);
+        target.points = Math.max(0, target.points - amount);
+        ctx.session = {};
+        return ctx.reply(`✅ Removed ${amount} points from User ${targetId}`, adminKeyboard);
+    }
+
 
 // --- LAUNCH BOT ---
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Online 🚀"));
+
