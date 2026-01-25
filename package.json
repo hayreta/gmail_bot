@@ -1,18 +1,12 @@
 {
-  "name": "createUnlimitedGmail-Bott",
-  "version": "1.1.0",
-  "description": "Premium Gmail Registration Bot",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "node index.js"
-  },
-  "dependencies": {
-    "telegraf": "^4.16.3",
-    "dotenv": "^17.2.3",
-    "lowdb": "^5.1.0"
-  },
-  "engines": {
-    "node": ">=14.13.1"
-  }
+"name": " createUnlimitedGmail Bott",
+"version": "1.1.0",
+"description": "Premium Gmail Registration Bot",
+"main": "index.js",
+"scripts": {
+"start": "node index.js"
+},
+"dependencies": {
+"telegraf": "^4.16.3"
+}
 }
