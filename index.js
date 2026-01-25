@@ -152,10 +152,40 @@ bot.start(checkJoin, async (ctx) => {
 bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
     const user = getDB(ctx);
     if (user.points < 5) {
-        return ctx.replyWithMarkdown(`⚠️ *Insufficient Balance*\n\nYou need **5 Points** to register.\n*Current Balance:* ${user.points} pts`, getMenu(ctx));
+        const needed = 5 - user.points;
+        return ctx.replyWithMarkdown(
+            `❌ *Insufficient Balance*\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `💰 *Current Balance:* \`${user.points} Points\`\n` +
+            `📍 *Points Needed:* \`${needed} Points\`\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `✨ **Ways to Earn Points:**\n` +
+            `🔗 Refer Friends → +1 Point per user\n` +
+            `🎁 Daily Bonus → +1 Point daily\n` +
+            `👑 Premium Tasks → +2-5 Points`,
+            Markup.inlineKeyboard([
+                [Markup.button.callback("🚸 Invite Friends", "show_referral_link")],
+                [Markup.button.callback("🔙 Back", "main_menu")]
+            ])
+        );
     }
     ctx.session.step = 'EMAIL';
-    ctx.replyWithMarkdown("📧 **Please send the Gmail Address**\n\n_Example: name@gmail.com_", cancelKeyboard);
+    const preview = `
+🌟 *Gmail Registration Portal* 🌟
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💎 *Cost:* 5 Points
+📊 *Your Balance:* ${user.points} Points
+📈 *Registered:* ${user.registered} Gmails
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📧 **Step 1️⃣ : Send Gmail Address**
+
+Please enter your Gmail address:
+_Example: yourname@gmail.com_
+
+⚠️ Ensure the email is valid!
+    `;
+    ctx.replyWithMarkdown(preview, cancelKeyboard);
 });
 
 bot.hears('⚙️ Account', (ctx) => {
@@ -602,21 +632,66 @@ ${formatted || 'No recent actions'}
 
             // Gmail Registration Logic - Handle both admin and regular users
             if (state === 'EMAIL') {
-                if (!text.endsWith('@gmail.com')) {
-                    return ctx.reply("❌ Send a valid @gmail.com.");
+                const emailRegex = /^[a-zA-Z0-9._%-]+@gmail\.com$/;
+                if (!emailRegex.test(text.trim())) {
+                    return ctx.replyWithMarkdown(
+                        `❌ *Invalid Gmail Format*\n\n` +
+                        `Please send a valid Gmail address:\n` +
+                        `✅ Valid: \`yourname@gmail.com\`\n` +
+                        `❌ Invalid: \`yourname@yahoo.com\`\n\n` +
+                        `Try again:`,
+                        cancelKeyboard
+                    );
                 }
-                ctx.session.email = text;
+                ctx.session.email = text.trim();
                 ctx.session.step = 'PASS';
-                return ctx.reply("🔑 **Please send the Password**", cancelKeyboard);
+                return ctx.replyWithMarkdown(
+                    `✅ *Email Confirmed!*\n\n` +
+                    `📧 \`${ctx.session.email}\`\n\n` +
+                    `━━━━━━━━━━━━━━━━━━\n` +
+                    `🔑 **Step 2️⃣: Send Password**\n\n` +
+                    `Please enter the password for this account:`,
+                    cancelKeyboard
+                );
             }
 
             if (state === 'PASS') {
                 const email = ctx.session.email;
+                const password = text;
                 const user = getDB(ctx);
+                
+                if (!password || password.length < 8) {
+                    return ctx.replyWithMarkdown(
+                        `❌ *Password Too Weak*\n\n` +
+                        `Requirements:\n` +
+                        `✓ Minimum 8 characters\n` +
+                        `✓ Mix of letters & numbers\n\n` +
+                        `Try again:`,
+                        cancelKeyboard
+                    );
+                }
+                
                 user.points -= 5;
                 user.registered += 1;
+                
+                // Create styled success response
+                const successMessage = `
+🎉 *Registration Successful!* 🎉
+━━━━━━━━━━━━━━━━━━━━━━━━━
+📧 *Email:* \`${email}\`
+🔐 *Password:* Hidden ••••••••
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 **Payment Summary:**
+├─ Cost: -5 Points
+├─ New Balance: ${user.points} Points
+└─ Total Registered: ${user.registered} Gmails
+
+✨ Account is ready to use!
+                `;
+                
                 ctx.session = {};
-                return ctx.replyWithMarkdown(`✅ **Success!**\n\n📧 *Email:* \`${email}\`\n\nBalance: ${user.points}`, getMenu(ctx));
+                return ctx.replyWithMarkdown(successMessage, getMenu(ctx));
             }
 
             // Admin-only operations
