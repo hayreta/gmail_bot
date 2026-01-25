@@ -293,7 +293,10 @@ bot.on('message', async (ctx, next) => {
             ctx.session.step = 'BROADCAST_CONFIRM';
             await ctx.reply("👇 **PREVIEW OF YOUR POST:**");
             await ctx.telegram.copyMessage(ctx.chat.id, ctx.chat.id, ctx.message.message_id);
-            return ctx.reply("⬆️ **Does this look correct?**", Markup.inlineKeyboard([['✅ CONFIRM & SEND'], ['❌ Cancel Operation']]).resize());
+            return ctx.reply("⬆️ **Does this look correct?**", { 
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([[Markup.button.callback('✅ CONFIRM & SEND', 'broadcast_confirm')], [Markup.button.callback('❌ Cancel Operation', 'cancel_op')]])
+            });
         }
 
         if (state === 'BROADCAST_CONFIRM' && text === '✅ CONFIRM & SEND' && ctx.from.id === ADMIN_ID) {
@@ -306,6 +309,12 @@ bot.on('message', async (ctx, next) => {
             }
             ctx.session = {};
             return ctx.reply("📢 **BROADCAST COMPLETE**", { parse_mode: 'Markdown', ...adminKeyboard });
+        }
+
+        if (state === 'BROADCAST_CONFIRM' && text === '❌ Cancel Operation' && ctx.from.id === ADMIN_ID) {
+            ctx.session = {};
+            await ctx.answerCbQuery("Broadcast cancelled.");
+            return ctx.reply("🚫 Broadcast cancelled.", { parse_mode: 'Markdown', ...adminKeyboard });
         }
 
         // Add Points Logic
@@ -426,6 +435,23 @@ bot.action('list_users_back', async (ctx) => {
 bot.action('refresh_ref', async (ctx) => {
     const user = getDB(ctx);
     await ctx.answerCbQuery(`Stats Updated! Points: ${user.points}`);
+});
+
+bot.action('broadcast_confirm', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) {
+        await ctx.answerCbQuery("❌ Unauthorized", { show_alert: true });
+        return;
+    }
+    const users = Object.keys(db);
+    await ctx.answerCbQuery();
+    await ctx.reply(`🚀 **Broadcasting to ${users.length} users...**`);
+    for (const userId of users) {
+        try { 
+            await ctx.telegram.copyMessage(userId, ctx.chat.id, ctx.session.msgToCopy); 
+        } catch (e) {}
+    }
+    ctx.session = {};
+    return ctx.reply("📢 **BROADCAST COMPLETE**", { parse_mode: 'Markdown', ...adminKeyboard });
 });
 
 // --- GRACEFUL SHUTDOWN FOR RAILWAY ---
