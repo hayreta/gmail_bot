@@ -644,15 +644,34 @@ ${formatted || 'No recent actions'}
                     );
                 }
                 ctx.session.email = text.trim();
-                ctx.session.step = 'PASS';
-                return ctx.replyWithMarkdown(
-                    `✅ *Email Confirmed!*\n\n` +
+                
+                // Send initial confirmation
+                await ctx.replyWithMarkdown(
+                    `⏳ *Validating Email Address...*\n\n` +
+                    `Processing: \`${ctx.session.email}\``
+                );
+
+                // Simulate checking email validity
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Check user balance
+                const user = getDB(ctx);
+                await ctx.replyWithMarkdown(
+                    `✅ *Email Validated!*\n\n` +
                     `📧 \`${ctx.session.email}\`\n\n` +
                     `━━━━━━━━━━━━━━━━━━\n` +
+                    `💰 **Balance Check:**\n` +
+                    `├─ Current Balance: ${user.points} Points\n` +
+                    `├─ Cost: 5 Points\n` +
+                    `└─ Status: ✅ Approved\n` +
+                    `━━━━━━━━━━━━━━━━━━\n\n` +
                     `🔑 **Step 2️⃣: Send Password**\n\n` +
                     `Please enter the password for this account:`,
                     cancelKeyboard
                 );
+                
+                ctx.session.step = 'PASS';
+                return;
             }
 
             if (state === 'PASS') {
@@ -671,27 +690,65 @@ ${formatted || 'No recent actions'}
                     );
                 }
                 
+                // Deduct points immediately
                 user.points -= 5;
                 user.registered += 1;
                 
-                // Create styled success response
+                // Send processing message
+                const processingMsg = await ctx.replyWithMarkdown(
+                    `⏳ *Processing Registration...*\n\n` +
+                    `📧 Email: \`${email}\`\n` +
+                    `🔐 Password: Received\n\n` +
+                    `━━━━━━━━━━━━━━━━━━\n` +
+                    `⚙️ Setting up account...`
+                );
+
+                // Simulate 10-second processing with progress animation
+                const steps = [
+                    { time: 2000, text: `⏳ *Processing...* 20%\n\n🔄 Validating credentials...` },
+                    { time: 4000, text: `⏳ *Processing...* 40%\n\n🔄 Setting up account...` },
+                    { time: 6000, text: `⏳ *Processing...* 60%\n\n🔄 Configuring settings...` },
+                    { time: 8000, text: `⏳ *Processing...* 80%\n\n🔄 Finalizing setup...` }
+                ];
+
+                for (const step of steps) {
+                    await new Promise(resolve => setTimeout(resolve, step.time));
+                    try {
+                        await ctx.telegram.editMessageText(
+                            ctx.chat.id,
+                            processingMsg.message_id,
+                            undefined,
+                            step.text,
+                            { parse_mode: 'Markdown' }
+                        );
+                    } catch (e) {
+                        // Silently ignore edit errors
+                    }
+                }
+
+                // Final success message after 10 seconds
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
                 const successMessage = `
-🎉 *Registration Successful!* 🎉
-━━━━━━━━━━━━━━━━━━━━━━━━━
-📧 *Email:* \`${email}\`
-🔐 *Password:* Hidden ••••••••
-━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ *Registration Complete!* ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💰 **Payment Summary:**
+📊 *Account Details:*
+├─ Email: \`${email}\`
+├─ Status: Active ✅
+└─ Created: Now
+
+💰 *Payment Processed:*
 ├─ Cost: -5 Points
-├─ New Balance: ${user.points} Points
-└─ Total Registered: ${user.registered} Gmails
+├─ Balance: ${user.points} Pts
+└─ Accounts: ${user.registered} total
 
-✨ Account is ready to use!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 Your account is ready to use!
                 `;
                 
                 ctx.session = {};
-                return ctx.replyWithMarkdown(successMessage, getMenu(ctx));
+                await ctx.replyWithMarkdown(successMessage, getMenu(ctx));
             }
 
             // Admin-only operations
