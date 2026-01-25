@@ -201,6 +201,78 @@ bot.hears('🏥 Help', async (ctx) => {
     );
 });
 
+// --- ADMIN: INITIATE BROADCAST ---
+bot.hears('📢 Broadcast', (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return;
+    
+    ctx.session.step = 'BROADCAST_PREVIEW';
+    ctx.replyWithMarkdown(
+        "🛠 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 ADVANCED BROADCAST**\n\n" +
+        "➡️ *Send me anything now...*\n" +
+        "_(Text, Photo, Video, or Sticker)_", 
+        cancelKeyboard
+    );
+});
+
+// --- ENGINE: HANDLING THE BROADCAST LOGIC ---
+bot.on('message', async (ctx, next) => {
+    const text = ctx.message?.text;
+    const state = ctx.session?.step;
+
+    if (text === '❌ Cancel Operation') {
+        ctx.session = {};
+        return ctx.reply("🚫 Operation Terminated.", getMenu(ctx));
+    }
+
+    if (!state) return next();
+
+    // 1. Preview Phase
+    if (state === 'BROADCAST_PREVIEW' && ctx.from.id === ADMIN_ID) {
+        ctx.session.msgToCopy = ctx.message.message_id;
+        ctx.session.step = 'BROADCAST_CONFIRM';
+        
+        await ctx.reply("👇 **PREVIEW OF YOUR POST:**");
+        
+        // Shows the admin exactly how the message will look
+        await ctx.telegram.copyMessage(ctx.chat.id, ctx.chat.id, ctx.message.message_id);
+        
+        return ctx.reply(
+            "⬆️ **Does this look correct?**", 
+            Markup.keyboard([
+                ['✅ CONFIRM & SEND'], 
+                ['❌ Cancel Operation']
+            ]).resize()
+        );
+    }
+
+    // 2. Execution Phase
+    if (state === 'BROADCAST_CONFIRM' && text === '✅ CONFIRM & SEND' && ctx.from.id === ADMIN_ID) {
+        const users = Object.keys(db);
+        let successCount = 0;
+        let failCount = 0;
+
+        await ctx.reply(`🚀 **Broadcasting to ${users.length} users...**`, Markup.removeKeyboard());
+
+        for (const userId of users) {
+            try { 
+                // Using copyMessage allows sending photos, captions, and videos easily
+                await ctx.telegram.copyMessage(userId, ctx.chat.id, ctx.session.msgToCopy); 
+                successCount++;
+            } catch (e) {
+                failCount++;
+            }
+        }
+
+        ctx.session = {}; // Clear state
+        return ctx.reply(
+            `📢 **BROADCAST COMPLETE**\n\n✅ **Success:** ${successCount}\n❌ **Failed:** ${failCount}`, 
+            adminKeyboard
+        );
+    }
+
+    return next();
+});
+
 // --- CLOSE ACTION HANDLER ---
 bot.action('close_help', async (ctx) => {
     try {
@@ -256,4 +328,5 @@ bot.on('message', async (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Online 🚀"));
+
 
