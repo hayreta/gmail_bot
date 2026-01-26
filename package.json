@@ -1,18 +1,16 @@
 {
-  "name": "createUnlimitedGmail Bott",
+  "name": " createUnlimitedGmail Bott",
   "version": "1.0.0",
-  "description": "Telegram bot for unlimited Gmail account creation",
+  "description": "Premium Gmail Registration Bot",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node index.js"
+    "start": "node index.js"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "telegraf": "^4.14.1",
-    "@supabase/supabase-js": "^2.38.4",
-    "axios": "^1.6.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "dotenv": "^17.2.3",
+    "telegraf": "^4.16.3"
   }
 }
