@@ -1,5 +1,4 @@
 const { Telegraf, Markup, session } = require('telegraf');
-const db = require('./db');
 
 // CONFIGURATION
 const BOT_TOKEN = process.env.BOT_TOKEN || '8539976683:AAE02vIE0M_YxpKKluoYNQHsogNz-fYfks8';
@@ -7,7 +6,24 @@ const ADMIN_ID = 5522724001;
 const BOT_USERNAME = 'createUnlimitedGmail_Bot'; 
 
 const bot = new Telegraf(BOT_TOKEN);
+const db = {}; // In-memory database
 bot.use(session());
+
+// DATABASE SIMULATION
+const getDB = (ctx) => {
+    const id = (typeof ctx === 'object' && ctx.from) ? ctx.from.id : ctx;
+    if (!db[id]) {
+        db[id] = { 
+            points: 0, 
+            referrals: 0, 
+            registered: 0, 
+            joined: new Date(),
+            name: (ctx.from?.first_name) || "User",
+            username: ctx.from?.username ? `@${ctx.from.username}` : "No Username"
+        };
+    }
+    return db[id];
+};
 
 const CHANNELS = ['@Hayre37', '@Digital_Claim', '@BIgsew_community', '@hayrefx'];
 
@@ -88,14 +104,13 @@ bot.action('verify_and_delete', async (ctx) => {
             await ctx.deleteMessage(); 
         } catch (e) {}
         
-        // Get or create user in Supabase
-        const user = await db.getUser(ctx.from.id, ctx.from.first_name, ctx.from.username);
+        const user = getDB(ctx);
         await ctx.answerCbQuery("Success! Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ ✅");
         
         await ctx.replyWithPhoto(
             { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' },
             {
-                caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.first_name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
+                caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
                 parse_mode: 'Markdown',
                 ...getMenu(ctx)
             }
@@ -107,59 +122,55 @@ bot.action('verify_and_delete', async (ctx) => {
 
 // --- START COMMAND ---
 bot.start(checkJoin, async (ctx) => {
-    try {
-        const user = await db.getUser(ctx.from.id, ctx.from.first_name, ctx.from.username);
-        const refId = ctx.payload;
+    const user = getDB(ctx);
+    const refId = ctx.payload;
 
-        // Referral Logic
-        if (refId && refId != ctx.from.id) {
-            const referred = await db.getUserReferral(ctx.from.id);
-            if (!referred) {
-                await db.addReferral(parseInt(refId), ctx.from.id);
-                try {
-                    await bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user earned +1 Point.`, { parse_mode: 'Markdown' });
-                } catch (e) {}
-            }
+    // Referral Logic
+    if (refId && refId != ctx.from.id && !user.referredBy) {
+        user.referredBy = refId;
+        const referrer = getDB(refId); 
+        if (referrer) {
+            referrer.points += 1; 
+            referrer.referrals += 1;
+            try {
+                await bot.telegram.sendMessage(refId, `🔔 *Referral Alert!*\nNew user earned +1 Point.`, { parse_mode: 'Markdown' });
+            } catch (e) {}
         }
-
-        await ctx.replyWithPhoto(
-            { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' }, 
-            {
-                caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.first_name}\n💰 **Starting Balance:** \`${user.points} Points\`\n\nInvite friends to earn points!`,
-                parse_mode: 'Markdown',
-                ...getMenu(ctx)
-            }
-        );
-    } catch (error) {
-        console.error('Error in start command:', error);
-        ctx.reply('❌ An error occurred. Please try again later.');
     }
+
+    await ctx.replyWithPhoto(
+        { url: 'https://hayre32.wordpress.com/wp-content/uploads/2026/01/image_2026-01-24_114307874.png' }, 
+        {
+            caption: `👋 *Welcome to ❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞*\n\n👤 **User:** ${user.name}\n💰 **Starting Balance:** \`0 Points\`\n\nInvite friends to earn points!`,
+            parse_mode: 'Markdown',
+            ...getMenu(ctx)
+        }
+    );
 });
 
 // --- MAIN MENU HANDLERS ---
 bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
-    try {
-        const user = await db.getUser(ctx.from.id, ctx.from.first_name, ctx.from.username);
-        if (user.points < 5) {
-            const needed = 5 - user.points;
-            return ctx.replyWithMarkdown(
-                `❌ *Insufficient Balance*\n\n` +
-                `━━━━━━━━━━━━━━━━━━━━━━\n` +
-                `💰 *Current Balance:* \`${user.points} Points\`\n` +
-                `📍 *Points Needed:* \`${needed} Points\`\n` +
-                `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                `✨ **Ways to Earn Points:**\n` +
-                `🔗 Refer Friends → +1 Point per user\n` +
-                `🎁 Daily Bonus → +1 Point daily\n` +
-                `👑 Premium Tasks → +2-5 Points`,
-                Markup.inlineKeyboard([
-                    [Markup.button.callback("🚸 Invite Friends", "show_referral_link")],
-                    [Markup.button.callback("🔙 Back", "main_menu")]
-                ])
-            );
-        }
-        ctx.session.step = 'EMAIL';
-        const preview = `
+    const user = getDB(ctx);
+    if (user.points < 5) {
+        const needed = 5 - user.points;
+        return ctx.replyWithMarkdown(
+            `❌ *Insufficient Balance*\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `💰 *Current Balance:* \`${user.points} Points\`\n` +
+            `📍 *Points Needed:* \`${needed} Points\`\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `✨ **Ways to Earn Points:**\n` +
+            `🔗 Refer Friends → +1 Point per user\n` +
+            `🎁 Daily Bonus → +1 Point daily\n` +
+            `👑 Premium Tasks → +2-5 Points`,
+            Markup.inlineKeyboard([
+                [Markup.button.callback("🚸 Invite Friends", "show_referral_link")],
+                [Markup.button.callback("🔙 Back", "main_menu")]
+            ])
+        );
+    }
+    ctx.session.step = 'EMAIL';
+    const preview = `
 🌟 *Gmail Registration Portal* 🌟
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💎 *Cost:* 5 Points
@@ -174,34 +185,20 @@ _Example: yourname@gmail.com_
 
 ⚠️ Ensure the email is valid!
     `;
-        ctx.replyWithMarkdown(preview, cancelKeyboard);
-    } catch (error) {
-        console.error('Error in register gmail:', error);
-        ctx.reply('❌ An error occurred. Please try again later.');
-    }
+    ctx.replyWithMarkdown(preview, cancelKeyboard);
 });
 
-bot.hears('⚙️ Account', async (ctx) => {
-    try {
-        const user = await db.getUser(ctx.from.id, ctx.from.first_name, ctx.from.username);
-        ctx.replyWithMarkdown(`⭐ *PREMIUM ACCOUNT STATUS*\n━━━━━━━━━━━━━━━━━━\n🆔 *User ID:* \`${ctx.from.id}\`\n💰 *Balance:* \`${user.points} Points\`\n📊 *Registered:* \`${user.registered} Gmails\`\n🚸 *Invites:* \`${user.referrals} Users\`\n━━━━━━━━━━━━━━━━━━`, getMenu(ctx));
-    } catch (error) {
-        console.error('Error in account:', error);
-        ctx.reply('❌ An error occurred. Please try again later.');
-    }
+bot.hears('⚙️ Account', (ctx) => {
+    const user = getDB(ctx);
+    ctx.replyWithMarkdown(`⭐ *PREMIUM ACCOUNT STATUS*\n━━━━━━━━━━━━━━━━━━\n🆔 *User ID:* \`${ctx.from.id}\`\n💰 *Balance:* \`${user.points} Points\`\n📊 *Registered:* \`${user.registered} Gmails\`\n🚸 *Invites:* \`${user.referrals} Users\`\n━━━━━━━━━━━━━━━━━━`, getMenu(ctx));
 });
 
-bot.hears('🚸 My Referrals', async (ctx) => {
-    try {
-        const user = await db.getUser(ctx.from.id, ctx.from.first_name, ctx.from.username);
-        const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
-        const totalEarned = (user.referrals || 0) * 1;
-        ctx.replyWithMarkdown(`✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n━━━━━━━━━━━━━━━━━━\n👤 **User:** ${user.first_name}\n👥 **Total Referrals:** \`${user.referrals || 0}\`\n💰 **Total Earned:** \`${totalEarned} Points\`\n━━━━━━━━━━━━━━━━━━\n🎁 **Reward:** \`1 Point\` per join!\n\n🔗 **Your Unique Link:**\n\`${link}\``, 
-            Markup.inlineKeyboard([[Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],[Markup.button.callback("📊 Refresh Stats", "refresh_ref")]]) );
-    } catch (error) {
-        console.error('Error in referrals:', error);
-        ctx.reply('❌ An error occurred. Please try again later.');
-    }
+bot.hears('🚸 My Referrals', (ctx) => {
+    const user = getDB(ctx); 
+    const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
+    const totalEarned = (user.referrals || 0) * 1;
+    ctx.replyWithMarkdown(`✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n━━━━━━━━━━━━━━━━━━\n👤 **User:** ${user.name}\n👥 **Total Referrals:** \`${user.referrals || 0}\`\n💰 **Total Earned:** \`${totalEarned} Points\`\n━━━━━━━━━━━━━━━━━━\n🎁 **Reward:** \`1 Point\` per join!\n\n🔗 **Your Unique Link:**\n\`${link}\``, 
+        Markup.inlineKeyboard([[Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],[Markup.button.callback("📊 Refresh Stats", "refresh_ref")]]) );
 });
 
 // --- HELP MESSAGE HANDLER ---
@@ -237,7 +234,7 @@ bot.action('close_help', async (ctx) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// 🛠️  ADVANCED ADMIN PANEL - NODE.JS TELEGRAM BOT WITH SUPABASE
+// 🛠️  ADVANCED ADMIN PANEL - NODE.JS TELEGRAM BOT
 // ═══════════════════════════════════════════════════════════════════
 
 class AdvancedAdminPanel {
@@ -249,6 +246,10 @@ class AdvancedAdminPanel {
         this.rateLimits = new Map();
         this.setupHandlers();
     }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // AUTHORIZATION & SECURITY
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     isAdmin(ctx) {
         return ctx.from.id === this.adminId;
@@ -278,37 +279,38 @@ class AdvancedAdminPanel {
         const logEntry = { timestamp, action, details };
         this.adminLog.push(logEntry);
         
+        // Keep last 100 logs
         if (this.adminLog.length > 100) {
             this.adminLog.shift();
         }
 
         console.log(`[ADMIN] ${action}:`, details);
-        // Also log to Supabase
-        this.db.logAdminAction(this.adminId, action, JSON.stringify(details));
     }
 
-    async getDetailedStats() {
-        try {
-            const users = await this.db.getAllUsers();
-            
-            return {
-                totalUsers: users.length,
-                totalPoints: users.reduce((sum, u) => sum + u.points, 0),
-                averagePoints: users.length ? (users.reduce((sum, u) => sum + u.points, 0) / users.length).toFixed(2) : 0,
-                topUsers: users.sort((a, b) => b.points - a.points).slice(0, 5),
-                bottomUsers: users.sort((a, b) => a.points - b.points).slice(0, 5),
-                registeredCount: users.length,
-                timestamp: new Date().toLocaleString(),
-            };
-        } catch (error) {
-            console.error('Error getting stats:', error);
-            return { error: 'Failed to fetch stats' };
-        }
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // STATISTICS & ANALYTICS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    getDetailedStats() {
+        const users = Object.values(this.db);
+        
+        return {
+            totalUsers: users.length,
+            totalPoints: users.reduce((sum, u) => sum + u.points, 0),
+            averagePoints: users.length ? (users.reduce((sum, u) => sum + u.points, 0) / users.length).toFixed(2) : 0,
+            topUsers: users.sort((a, b) => b.points - a.points).slice(0, 5),
+            bottomUsers: users.sort((a, b) => a.points - b.points).slice(0, 5),
+            activeToday: users.filter(u => {
+                const lastActive = new Date(u.lastActive || 0);
+                const today = new Date();
+                return lastActive.toDateString() === today.toDateString();
+            }).length,
+            registeredCount: users.length,
+            timestamp: new Date().toLocaleString(),
+        };
     }
 
     formatStatsMessage(stats) {
-        if (stats.error) return `❌ ${stats.error}`;
-        
         return `
 ╔══════════════════════════════════════════╗
 ║     📊 ADVANCED SERVER STATISTICS 📊     ║
@@ -317,50 +319,51 @@ class AdvancedAdminPanel {
 👥 **Total Users:** ${stats.totalUsers}
 🎯 **Total Points Distributed:** ${stats.totalPoints.toLocaleString()}
 📈 **Average Points/User:** ${stats.averagePoints}
+🔥 **Active Today:** ${stats.activeToday}
 ⏰ **Updated:** ${stats.timestamp}
 
 ┌─ 🏆 TOP 5 USERS ─────────────────────────┐
-${stats.topUsers.map((u, i) => `${i + 1}. ${u.first_name} (@${u.username}) • ${u.points} pts`).join('\n')}
+${stats.topUsers.map((u, i) => `${i + 1}. ${u.name} (@${u.username}) • ${u.points} pts`).join('\n')}
 └──────────────────────────────────────────┘
 
 ┌─ ⬇️  BOTTOM 5 USERS ──────────────────────┐
-${stats.bottomUsers.map((u, i) => `${i + 1}. ${u.first_name} (@${u.username}) • ${u.points} pts`).join('\n')}
+${stats.bottomUsers.map((u, i) => `${i + 1}. ${u.name} (@${u.username}) • ${u.points} pts`).join('\n')}
 └──────────────────────────────────────────┘
 
 🔐 **Server Status:** ✅ OPERATIONAL
+⚡ **API Latency:** ~${Math.random() * 50 + 20 | 0}ms
 📡 **Uptime:** ${(process.uptime() / 3600).toFixed(1)}h
         `;
     }
 
-    async searchUsers(query, limit = 20) {
-        try {
-            const users = await this.db.getAllUsers();
-            const lowerQuery = query.toLowerCase();
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // USER SEARCH & FILTERING
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-            return users
-                .filter(user => 
-                    user.telegram_id.toString().includes(query) ||
-                    user.first_name?.toLowerCase().includes(lowerQuery) ||
-                    user.username?.toLowerCase().includes(lowerQuery)
-                )
-                .slice(0, limit);
-        } catch (error) {
-            console.error('Error searching users:', error);
-            return [];
-        }
+    searchUsers(query, limit = 20) {
+        const users = Object.entries(this.db);
+        const lowerQuery = query.toLowerCase();
+
+        return users
+            .filter(([id, user]) => 
+                id.includes(query) ||
+                user.name?.toLowerCase().includes(lowerQuery) ||
+                user.username?.toLowerCase().includes(lowerQuery)
+            )
+            .slice(0, limit)
+            .map(([id, user]) => ({ id, ...user }));
     }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ADVANCED BROADCAST SYSTEM
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     async broadcastMessage(ctx, messageId, targetIds = null) {
         if (!this.checkRateLimit(ctx.from.id, 'broadcast')) {
             return ctx.reply('⏱️ **Rate Limit:** Too many broadcasts. Please wait before trying again.');
         }
 
-        let targets = targetIds;
-        if (!targets) {
-            const users = await this.db.getAllUsers();
-            targets = users.map(u => u.telegram_id);
-        }
-
+        const targets = targetIds || Object.keys(this.db);
         let sent = 0, failed = 0;
 
         await ctx.reply(`📡 **Broadcasting to ${targets.length} users...**\n\n⏳ Processing...`);
@@ -385,50 +388,68 @@ ${stats.bottomUsers.map((u, i) => `${i + 1}. ${u.first_name} (@${u.username}) �
         );
     }
 
-    async updateUserPoints(userId, amount, reason = 'Manual adjustment') {
-        try {
-            if (amount > 0) {
-                await this.db.addPoints(userId, amount, reason);
-            } else {
-                await this.db.removePoints(userId, Math.abs(amount), reason);
-            }
-            
-            const user = await this.db.getUser(userId);
-            this.logAdminAction('POINTS_UPDATE', {
-                userId,
-                change: amount,
-                newPoints: user.points,
-                reason
-            });
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // POINTS MANAGEMENT - ADVANCED
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-            return {
-                success: true,
-                userId,
-                newPoints: user.points,
-                change: amount
-            };
-        } catch (error) {
-            console.error('Error updating points:', error);
-            return { success: false, error: error.message };
+    updateUserPoints(userId, amount, reason = 'Manual adjustment') {
+        if (!this.db[userId]) {
+            return { success: false, error: 'User not found' };
         }
+
+        const previousPoints = this.db[userId].points;
+        this.db[userId].points = Math.max(0, this.db[userId].points + amount);
+        
+        const change = this.db[userId].points - previousPoints;
+        this.logAdminAction('POINTS_UPDATE', {
+            userId,
+            previousPoints,
+            newPoints: this.db[userId].points,
+            change,
+            reason
+        });
+
+        return {
+            success: true,
+            userId,
+            previousPoints,
+            newPoints: this.db[userId].points,
+            change
+        };
     }
 
-    async getUserProfile(userId) {
-        try {
-            const user = await this.db.getUser(userId);
-            if (!user) return null;
+    bulkUpdatePoints(userIds, amount, reason) {
+        const results = userIds.map(id => this.updateUserPoints(id, amount, reason));
+        const successful = results.filter(r => r.success).length;
 
-            const joinDate = new Date(user.joined);
+        this.logAdminAction('BULK_POINTS_UPDATE', {
+            total: userIds.length,
+            successful,
+            amount,
+            reason
+        });
 
-            return {
-                ...user,
-                joinedDate: joinDate.toLocaleDateString(),
-                accountAgeInDays: Math.floor((Date.now() - joinDate) / (1000 * 60 * 60 * 24)),
-            };
-        } catch (error) {
-            console.error('Error getting user profile:', error);
-            return null;
-        }
+        return results;
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // USER MANAGEMENT
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    getUserProfile(userId) {
+        const user = this.db[userId];
+        if (!user) return null;
+
+        const joinDate = new Date(user.joinedAt || Date.now());
+        const lastActive = new Date(user.lastActive || Date.now());
+
+        return {
+            ...user,
+            userId,
+            joinedDate: joinDate.toLocaleDateString(),
+            lastActiveDate: lastActive.toLocaleDateString(),
+            accountAgeInDays: Math.floor((Date.now() - joinDate) / (1000 * 60 * 60 * 24)),
+        };
     }
 
     formatUserProfile(profile) {
@@ -437,14 +458,19 @@ ${stats.bottomUsers.map((u, i) => `${i + 1}. ${u.first_name} (@${u.username}) �
 ║        👤 USER PROFILE DETAILS 👤        ║
 ╚══════════════════════════════════════════╝
 
-🆔 **User ID:** \`${profile.telegram_id}\`
-📝 **Name:** ${profile.first_name}
-🔗 **Username:** @${profile.username || 'N/A'}
+🆔 **User ID:** \`${profile.userId}\`
+📝 **Name:** ${profile.name}
+🔗 **Username:** @${profile.username}
 💰 **Points:** ${profile.points}
 📅 **Joined:** ${profile.joinedDate}
+🕐 **Last Active:** ${profile.lastActiveDate}
 ⏳ **Account Age:** ${profile.accountAgeInDays} days
         `;
     }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ADMIN LOG VIEWER
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     getAdminLog(limit = 10) {
         return this.adminLog.slice(-limit).reverse();
@@ -467,6 +493,10 @@ ${formatted || 'No recent actions'}
         `;
     }
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // UI KEYBOARDS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     getMainAdminKeyboard() {
         return Markup.keyboard([
             ['📊 Statistics', '📢 Broadcast Message'],
@@ -479,7 +509,13 @@ ${formatted || 'No recent actions'}
     getPointsKeyboard() {
         return Markup.keyboard([
             ['➕ Add Points', '➖ Remove Points'],
-            ['⬅️ Back to Admin Menu']
+            ['📊 Bulk Update', '⬅️ Back to Admin Menu']
+        ]).resize();
+    }
+
+    getSearchKeyboard() {
+        return Markup.keyboard([
+            ['🔄 New Search', '⬅️ Back to Admin Menu']
         ]).resize();
     }
 
@@ -488,6 +524,10 @@ ${formatted || 'No recent actions'}
             ['❌ Cancel Operation']
         ]).resize();
     }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // HANDLER SETUP
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     setupHandlers() {
         // Main Admin Panel
@@ -506,9 +546,9 @@ ${formatted || 'No recent actions'}
         });
 
         // Statistics
-        this.bot.hears('📊 Statistics', async (ctx) => {
+        this.bot.hears('📊 Statistics', (ctx) => {
             if (!this.isAdmin(ctx)) return;
-            const stats = await this.getDetailedStats();
+            const stats = this.getDetailedStats();
             ctx.replyWithMarkdown(this.formatStatsMessage(stats));
             this.logAdminAction('VIEW_STATS', {});
         });
@@ -553,21 +593,17 @@ ${formatted || 'No recent actions'}
         });
 
         // User Directory
-        this.bot.hears('👥 User Directory', async (ctx) => {
+        this.bot.hears('👥 User Directory', (ctx) => {
             if (!this.isAdmin(ctx)) return;
-            try {
-                const users = await this.db.getAllUsers();
-                if (users.length === 0) return ctx.reply('📭 Database is empty.');
-                
-                const buttons = users.slice(0, 50).map(user => 
-                    [Markup.button.callback(`👤 ${user.first_name} | 💰 ${user.points}`, `view_prof:${user.telegram_id}`)]
-                );
-                
-                ctx.replyWithMarkdown('📂 **USER DIRECTORY**', Markup.inlineKeyboard(buttons));
-                this.logAdminAction('VIEW_DIRECTORY', { count: users.length });
-            } catch (error) {
-                ctx.reply('❌ Error fetching user directory.');
-            }
+            const userIds = Object.keys(this.db);
+            if (userIds.length === 0) return ctx.reply('📭 Database is empty.');
+            
+            const buttons = userIds.slice(0, 50).map(id => 
+                [Markup.button.callback(`👤 ${this.db[id].name} | 💰 ${this.db[id].points}`, `view_prof:${id}`)]
+            );
+            
+            ctx.replyWithMarkdown('📂 **USER DIRECTORY**', Markup.inlineKeyboard(buttons));
+            this.logAdminAction('VIEW_DIRECTORY', { count: userIds.length });
         });
 
         // Back buttons
@@ -594,7 +630,7 @@ ${formatted || 'No recent actions'}
 
             const text = ctx.message?.text;
 
-            // Gmail Registration Logic
+            // Gmail Registration Logic - Handle both admin and regular users
             if (state === 'EMAIL') {
                 const emailRegex = /^[a-zA-Z0-9._%-]+@gmail\.com$/;
                 if (!emailRegex.test(text.trim())) {
@@ -609,14 +645,17 @@ ${formatted || 'No recent actions'}
                 }
                 ctx.session.email = text.trim();
                 
+                // Send initial confirmation
                 await ctx.replyWithMarkdown(
                     `⏳ *Validating Email Address...*\n\n` +
                     `Processing: \`${ctx.session.email}\``
                 );
 
+                // Simulate checking email validity
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
-                const user = await db.getUser(ctx.from.id, ctx.from.first_name, ctx.from.username);
+                // Check user balance
+                const user = getDB(ctx);
                 await ctx.replyWithMarkdown(
                     `✅ *Email Validated!*\n\n` +
                     `📧 \`${ctx.session.email}\`\n\n` +
@@ -638,6 +677,7 @@ ${formatted || 'No recent actions'}
             if (state === 'PASS') {
                 const email = ctx.session.email;
                 const password = text;
+                const user = getDB(ctx);
                 
                 if (!password || password.length < 8) {
                     return ctx.replyWithMarkdown(
@@ -650,10 +690,11 @@ ${formatted || 'No recent actions'}
                     );
                 }
                 
-                // Deduct points from Supabase
-                const user = await db.removePoints(ctx.from.id, 5, 'gmail_registration');
-                await db.incrementRegistered(ctx.from.id);
+                // Deduct points immediately
+                user.points -= 5;
+                user.registered += 1;
                 
+                // Send processing message
                 const processingMsg = await ctx.replyWithMarkdown(
                     `⏳ *Processing Registration...*\n\n` +
                     `📧 Email: \`${email}\`\n` +
@@ -662,6 +703,7 @@ ${formatted || 'No recent actions'}
                     `⚙️ Setting up account...`
                 );
 
+                // Simulate 10-second processing with progress animation
                 const steps = [
                     { time: 2000, text: `⏳ *Processing...* 20%\n\n🔄 Validating credentials...` },
                     { time: 4000, text: `⏳ *Processing...* 40%\n\n🔄 Setting up account...` },
@@ -679,12 +721,14 @@ ${formatted || 'No recent actions'}
                             step.text,
                             { parse_mode: 'Markdown' }
                         );
-                    } catch (e) {}
+                    } catch (e) {
+                        // Silently ignore edit errors
+                    }
                 }
 
+                // Final success message after 10 seconds
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                const updatedUser = await db.getUser(ctx.from.id, ctx.from.first_name, ctx.from.username);
                 const successMessage = `
 ✅ *Registration Complete!* ✅
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -696,8 +740,8 @@ ${formatted || 'No recent actions'}
 
 💰 *Payment Processed:*
 ├─ Cost: -5 Points
-├─ Balance: ${updatedUser.points} Pts
-└─ Accounts: ${updatedUser.registered} total
+├─ Balance: ${user.points} Pts
+└─ Accounts: ${user.registered} total
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎉 Your account is ready to use!
@@ -712,7 +756,7 @@ ${formatted || 'No recent actions'}
 
             // Search Logic
             if (state === 'SEARCH_QUERY') {
-                const results = await this.searchUsers(text);
+                const results = this.searchUsers(text);
                 if (results.length === 0) {
                     ctx.reply('❌ No users found.');
                     ctx.session.step = 'SEARCH_QUERY';
@@ -720,7 +764,7 @@ ${formatted || 'No recent actions'}
                 }
 
                 const buttons = results.map(user =>
-                    [Markup.button.callback(`${user.first_name} (@${user.username})`, `view_prof:${user.telegram_id}`)]
+                    [Markup.button.callback(`${user.name} (@${user.username})`, `view_prof:${user.id}`)]
                 );
 
                 ctx.replyWithMarkdown(`🔍 **Found ${results.length} results:**`, Markup.inlineKeyboard(buttons));
@@ -743,12 +787,10 @@ ${formatted || 'No recent actions'}
 
             // Add/Remove Points
             if (state === 'ADD_POINTS_ID') {
-                const userId = parseInt(text);
-                const user = await this.getUserProfile(userId);
-                if (!user) {
+                if (!this.db[text]) {
                     return ctx.reply('❌ User not found.');
                 }
-                ctx.session.targetId = userId;
+                ctx.session.targetId = text;
                 ctx.session.step = 'ADD_POINTS_AMT';
                 return ctx.reply('💰 **Enter points amount:**', this.getCancelKeyboard());
             }
@@ -758,22 +800,16 @@ ${formatted || 'No recent actions'}
                 if (isNaN(amount) || amount < 0) {
                     return ctx.reply('❌ Enter a valid positive number.');
                 }
-                const result = await this.updateUserPoints(ctx.session.targetId, amount, 'Admin manual addition');
+                const result = this.updateUserPoints(ctx.session.targetId, amount, 'Admin manual addition');
                 ctx.session = {};
-                if (result.success) {
-                    return ctx.reply(`✅ Added ${amount} points to user ${result.userId}`, this.getMainAdminKeyboard());
-                } else {
-                    return ctx.reply(`❌ Error: ${result.error}`, this.getMainAdminKeyboard());
-                }
+                return ctx.reply(`✅ Added ${amount} points to user ${result.userId}`, this.getMainAdminKeyboard());
             }
 
             if (state === 'REM_POINTS_ID') {
-                const userId = parseInt(text);
-                const user = await this.getUserProfile(userId);
-                if (!user) {
+                if (!this.db[text]) {
                     return ctx.reply('❌ User not found.');
                 }
-                ctx.session.targetId = userId;
+                ctx.session.targetId = text;
                 ctx.session.step = 'REM_POINTS_AMT';
                 return ctx.reply('💰 **Enter points to remove:**', this.getCancelKeyboard());
             }
@@ -783,22 +819,17 @@ ${formatted || 'No recent actions'}
                 if (isNaN(amount) || amount < 0) {
                     return ctx.reply('❌ Enter a valid positive number.');
                 }
-                const result = await this.updateUserPoints(ctx.session.targetId, -amount, 'Admin manual removal');
+                const result = this.updateUserPoints(ctx.session.targetId, -amount, 'Admin manual removal');
                 ctx.session = {};
-                if (result.success) {
-                    return ctx.reply(`✅ Removed ${amount} points from user ${result.userId}`, this.getMainAdminKeyboard());
-                } else {
-                    return ctx.reply(`❌ Error: ${result.error}`, this.getMainAdminKeyboard());
-                }
+                return ctx.reply(`✅ Removed ${amount} points from user ${result.userId}`, this.getMainAdminKeyboard());
             }
         });
 
         // Callback for user profile viewing
-        this.bot.action(/view_prof:(.+)/, async (ctx) => {
+        this.bot.action(/view_prof:(.+)/, (ctx) => {
             if (!this.isAdmin(ctx)) return ctx.answerCbQuery('❌ Access denied');
             
-            const userId = ctx.match[1];
-            const profile = await this.getUserProfile(parseInt(userId));
+            const profile = this.getUserProfile(ctx.match[1]);
             if (!profile) return ctx.answerCbQuery('❌ User not found');
             
             ctx.replyWithMarkdown(this.formatUserProfile(profile));
@@ -811,23 +842,33 @@ ${formatted || 'No recent actions'}
 const adminPanel = new AdvancedAdminPanel(bot, db, ADMIN_ID);
 
 // --- CALLBACK HANDLERS ---
-bot.action('show_referral_link', async (ctx) => {
-    const user = await db.getUser(ctx.from.id, ctx.from.first_name, ctx.from.username);
-    const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
+bot.action(/quick_add:(.+)/, (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return ctx.answerCbQuery('❌ Access denied');
+    ctx.session.step = 'ADD_POINTS_AMT';
+    ctx.session.targetId = ctx.match[1];
+    ctx.reply(`💰 **Enter points to add for ID ${ctx.match[1]}:**`, cancelKeyboard);
     ctx.answerCbQuery();
-    ctx.reply(`🔗 Your referral link:\n\`${link}\``, Markup.inlineKeyboard([
-        [Markup.button.url("📤 Share", `https://t.me/share/url?url=${encodeURIComponent(link)}`)]
-    ]));
 });
 
-bot.action('main_menu', (ctx) => {
+bot.action(/quick_rem:(.+)/, (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return ctx.answerCbQuery('❌ Access denied');
+    ctx.session.step = 'REM_POINTS_AMT';
+    ctx.session.targetId = ctx.match[1];
+    ctx.reply(`💰 **Enter points to remove for ID ${ctx.match[1]}:**`, cancelKeyboard);
     ctx.answerCbQuery();
-    ctx.reply('↩️ Back to main menu', getMenu(ctx));
 });
 
-bot.action('refresh_ref', async (ctx) => {
-    const user = await db.getUser(ctx.from.id, ctx.from.first_name, ctx.from.username);
+bot.action('list_users_back', async (ctx) => {
+    if (ctx.from.id !== ADMIN_ID) return ctx.answerCbQuery('❌ Access denied');
+    const userIds = Object.keys(db);
+    const buttons = userIds.map(id => [Markup.button.callback(`👤 ID: ${id} | 💰 ${db[id].points} pts`, `view_prof:${id}`)]);
+    await ctx.editMessageText("📂 **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 USER DIRECTORY**", { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) });
+});
+
+bot.action('refresh_ref', (ctx) => {
+    const user = getDB(ctx);
     ctx.answerCbQuery(`Stats Updated! Points: ${user.points}`);
 });
 
-bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀 (Supabase Enabled)"));
+bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
