@@ -74,9 +74,9 @@ async function checkJoin(ctx, next) {
                 caption: `⛔️ **ACCESS DENIED**\n\nYou must join our official channels to use this bot's premium features.`,
                 parse_mode: 'Markdown',
                 ...Markup.inlineKeyboard([
-                    [Markup.button.url("Channel 1", "https://t.me/Hayre37"), Markup.button.url("Channel 2", "https://t.me/Digital_Claim")],
-                    [Markup.button.url("Channel 3", "https://t.me/BIgsew_community"), Markup.button.url("Channel 4", "https://t.me/hayrefx")],
-                    [Markup.button.callback("Verify Membership ✅", "verify_and_delete")]
+                [Markup.button.url("Channel 1", "https://t.me/Unlimited_GmailA"), Markup.button.url("Channel 2", "https://t.me/Global_OnlineWork")],
+                [Markup.button.url("Channel 3", "https://t.me/AbModded_File"), Markup.button.url("Channel 4", "https://t.me/Canva_Pro_Teams_Links")],
+                [Markup.button.callback("Verify Membership ✅", "verify_and_delete")]
                 ])
             }
         );
@@ -996,6 +996,7 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
