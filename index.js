@@ -153,22 +153,23 @@ bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
     const user = getDB(ctx);
     if (user.points < 5) {
         const needed = 5 - user.points;
-        return ctx.replyWithMarkdown(
-            `❌ *Insufficient Balance*\n\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `💰 *Current Balance:* \`${user.points} Points\`\n` +
-            `📍 *Points Needed:* \`${needed} Points\`\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `✨ **Ways to Earn Points:**\n` +
-            `🔗 Refer Friends → +1 Point per user\n` +
-            `🎁 Daily Bonus → +1 Point daily\n` +
-            `👑 Premium Tasks → +2-5 Points`,
-            Markup.inlineKeyboard([
-                [Markup.button.callback("🚸 Invite Friends", "show_referral_link")],
-                [Markup.button.callback("🔙 Back", "main_menu")]
-            ])
-        );
-    }
+       return ctx.replyWithMarkdown(
+    `❌ *Insufficient Balance*\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━\n` +
+    `💰 *Current Balance:* \`${user.points} Points\`\n` +
+    `📍 *Points Needed:* \`${needed} Points\`\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+    `✨ **Ways to Earn Points:**\n` +
+    `🔗 Refer Friends → +1 Point per user\n` +
+    `🎁 Daily Bonus → +1 Point daily\n` +
+    `👑 Premium Tasks → +2-5 Points`,
+    Markup.inlineKeyboard([
+        [
+            Markup.button.callback("🚸 Invite Friends", "show_referral_link"),
+            Markup.button.callback("🔙 Back", "main_menu")
+        ]
+    ])
+);
     ctx.session.step = 'EMAIL';
     const preview = `
 🌟 *Gmail Registration Portal* 🌟
@@ -871,4 +872,5 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
