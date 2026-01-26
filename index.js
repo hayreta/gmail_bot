@@ -25,7 +25,8 @@ const getDB = (ctx) => {
     return db[id];
 };
 
-const CHANNELS = ['@Hayre37', '@Digital_Claim', '@BIgsew_community', '@hayrefx'];
+const CHANNELS = ['@Unlimited_GmailA','@Global_OnlineWork','@AbModded_File','@Canva_Pro_Teams_Links'];
+
 
 // --- KEYBOARDS ---
 const getMenu = (ctx) => {
@@ -995,6 +996,7 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
