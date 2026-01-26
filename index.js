@@ -149,34 +149,38 @@ bot.start(checkJoin, async (ctx) => {
 });
 
 // --- MAIN MENU HANDLERS ---
+
 bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
     const user = getDB(ctx);
+    
     if (user.points < 5) {
         const needed = 5 - user.points;
-       return ctx.replyWithMarkdown(
-    `❌ *Insufficient Balance*\n\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `💰 *Current Balance:* \`${user.points} Points\`\n` +
-    `📍 *Points Needed:* \`${needed} Points\`\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `✨ **Ways to Earn Points:**\n` +
-    `🔗 Refer Friends → +1 Point per user\n` +
-    `🎁 Daily Bonus → +1 Point daily\n` +
-    `👑 Premium Tasks → +2-5 Points`,
-    Markup.inlineKeyboard([
-        [
-            Markup.button.callback("🚸 Invite Friends", "show_referral_link"),
-            Markup.button.callback("🔙 Back", "main_menu")
-        ]
-    ])
-);
+        return ctx.replyWithMarkdown(
+            `❌ *Insufficient Balance*\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `💰 *Current Balance:* \`${user.points} Points\`\n` +
+            `📍 *Points Needed:* \`${needed} Points\`\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+            `✨ **Ways to Earn Points:**\n` +
+            `🔗 Refer Friends → +1 Point per user\n` +
+            `🎁 Daily Bonus → +1 Point daily\n` +
+            `👑 Premium Tasks → +2-5 Points`,
+            Markup.inlineKeyboard([
+                [
+                    Markup.button.callback("🚸 Invite Friends", "show_referral_link"),
+                    Markup.button.callback("🔙 Back", "main_menu")
+                ]
+            ])
+        );
+    }
+
     ctx.session.step = 'EMAIL';
     const preview = `
 🌟 *Gmail Registration Portal* 🌟
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💎 *Cost:* 5 Points
 📊 *Your Balance:* ${user.points} Points
-📈 *Registered:* ${user.registered} Gmails
+📈 *Registered:* ${user.registered || 0} Gmails
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📧 **Step 1️⃣ : Send Gmail Address**
@@ -184,22 +188,79 @@ bot.hears('➕ Register New Gmail', checkJoin, async (ctx) => {
 Please enter your Gmail address:
 _Example: yourname@gmail.com_
 
-⚠️ Ensure the email is valid!
-    `;
+⚠️ Ensure the email is valid!`;
+
     ctx.replyWithMarkdown(preview, cancelKeyboard);
 });
 
 bot.hears('⚙️ Account', (ctx) => {
     const user = getDB(ctx);
-    ctx.replyWithMarkdown(`⭐ *PREMIUM ACCOUNT STATUS*\n━━━━━━━━━━━━━━━━━━\n🆔 *User ID:* \`${ctx.from.id}\`\n💰 *Balance:* \`${user.points} Points\`\n📊 *Registered:* \`${user.registered} Gmails\`\n🚸 *Invites:* \`${user.referrals} Users\`\n━━━━━━━━━━━━━━━━━━`, getMenu(ctx));
+    ctx.replyWithMarkdown(
+        `⭐ *PREMIUM ACCOUNT STATUS*\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `🆔 *User ID:* \`${ctx.from.id}\`\n` +
+        `💰 *Balance:* \`${user.points} Points\`\n` +
+        `📊 *Registered:* \`${user.registered || 0} Gmails\`\n` +
+        `🚸 *Invites:* \`${user.referrals || 0} Users\`\n` +
+        `━━━━━━━━━━━━━━━━━━`, 
+        getMenu(ctx)
+    );
 });
 
 bot.hears('🚸 My Referrals', (ctx) => {
     const user = getDB(ctx); 
     const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
     const totalEarned = (user.referrals || 0) * 1;
-    ctx.replyWithMarkdown(`✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n━━━━━━━━━━━━━━━━━━\n👤 **User:** ${user.name}\n👥 **Total Referrals:** \`${user.referrals || 0}\`\n💰 **Total Earned:** \`${totalEarned} Points\`\n━━━━━━━━━━━━━━━━━━\n🎁 **Reward:** \`1 Point\` per join!\n\n🔗 **Your Unique Link:**\n\`${link}\``, 
-        Markup.inlineKeyboard([[Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],[Markup.button.callback("📊 Refresh Stats", "refresh_ref")]]) );
+
+    ctx.replyWithMarkdown(
+        `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `👤 **User:** ${user.name}\n` +
+        `👥 **Total Referrals:** \`${user.referrals || 0}\`\n` +
+        `💰 **Total Earned:** \`${totalEarned} Points\`\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `🎁 **Reward:** \`1 Point\` per join!\n\n` +
+        `🔗 **Your Unique Link:**\n\`${link}\``, 
+        Markup.inlineKeyboard([
+            [Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],
+            [
+                Markup.button.callback("📊 Refresh Stats", "refresh_ref"),
+                Markup.button.callback("🔙 Back", "main_menu")
+            ]
+        ])
+    );
+});
+
+// --- CALLBACK QUERY HANDLERS (To make buttons work) ---
+
+bot.action('main_menu', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply("Returning to Main Menu...", getMenu(ctx));
+});
+
+bot.action('refresh_ref', async (ctx) => {
+    const user = getDB(ctx);
+    const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
+    const totalEarned = (user.referrals || 0) * 1;
+    
+    await ctx.answerCbQuery("Stats Updated! ✅");
+    await ctx.editMessageText(
+        `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `👤 **User:** ${user.name}\n` +
+        `👥 **Total Referrals:** \`${user.referrals || 0}\`\n` +
+        `💰 **Total Earned:** \`${totalEarned} Points\`\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `🎁 **Reward:** \`1 Point\` per join!\n\n` +
+        `🔗 **Your Unique Link:**\n\`${link}\``,
+        {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+                [Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],
+                [Markup.button.callback("📊 Refresh Stats", "refresh_ref"), Markup.button.callback("🔙 Back", "main_menu")]
+            ])
+        }
+    );
 });
 
 // --- HELP MESSAGE HANDLER ---
@@ -872,5 +933,6 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
