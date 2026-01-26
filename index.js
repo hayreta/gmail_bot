@@ -231,6 +231,68 @@ bot.hears('🚸 My Referrals', (ctx) => {
     );
 });
 
+// --- CALLBACK QUERY HANDLERS (With Message Deletion) ---
+
+bot.action('main_menu', async (ctx) => {
+    try {
+        await ctx.answerCbQuery();
+        await ctx.deleteMessage(); // Deletes the inline message
+    } catch (e) {
+        console.error("Could not delete message:", e);
+    }
+    return ctx.reply("🏠 Welcome back to the Main Menu", getMenu(ctx));
+});
+
+bot.action('show_referral_link', async (ctx) => {
+    const user = getDB(ctx);
+    const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
+    
+    try {
+        await ctx.answerCbQuery();
+        await ctx.deleteMessage(); // Deletes "Insufficient Balance" message
+    } catch (e) {}
+
+    return ctx.replyWithMarkdown(
+        `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `🔗 **Your Unique Link:**\n\`${link}\``, 
+        Markup.inlineKeyboard([
+            [Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],
+            [Markup.button.callback("🔙 Back", "main_menu")]
+        ])
+    );
+});
+
+bot.action('refresh_ref', async (ctx) => {
+    const user = getDB(ctx);
+    const link = `https://t.me/${BOT_USERNAME}?start=${ctx.from.id}`;
+    const totalEarned = (user.referrals || 0) * 1;
+    
+    try {
+        await ctx.answerCbQuery("Stats Updated! ✅");
+        // We use editMessageText here so the message stays the same but updates numbers
+        await ctx.editMessageText(
+            `✨ **𝕏-𝐇𝐔𝐍𝐓𝐄𝐑 AFFILIATE CENTER** ✨\n` +
+            `━━━━━━━━━━━━━━━━━━\n` +
+            `👤 **User:** ${user.name}\n` +
+            `👥 **Total Referrals:** \`${user.referrals || 0}\`\n` +
+            `💰 **Total Earned:** \`${totalEarned} Points\`\n` +
+            `━━━━━━━━━━━━━━━━━━\n` +
+            `🎁 **Reward:** \`1 Point\` per join!\n\n` +
+            `🔗 **Your Unique Link:**\n\`${link}\``,
+            {
+                parse_mode: 'Markdown',
+                ...Markup.inlineKeyboard([
+                    [Markup.button.url("📤 Share Invite Link", `https://t.me/share/url?url=${encodeURIComponent(link)}`)],
+                    [Markup.button.callback("📊 Refresh Stats", "refresh_ref"), Markup.button.callback("🔙 Back", "main_menu")]
+                ])
+            }
+        );
+    } catch (e) {
+        // If nothing changed, Telegram might throw an error, we ignore it
+    }
+});
+
 // --- CALLBACK QUERY HANDLERS (To make buttons work) ---
 
 bot.action('main_menu', async (ctx) => {
@@ -933,6 +995,7 @@ bot.action('refresh_ref', (ctx) => {
 });
 
 bot.launch().then(() => console.log("❝𝕏-𝐇𝐮𝐧𝐭𝐞𝐫❞ Advanced Bot Online 🚀"));
+
 
 
 
